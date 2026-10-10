@@ -1,0 +1,183 @@
+<%- include('partials/header') %>
+<div class="page-title"><h1><i class="fa-solid fa-users-gear"></i> System Management</h1></div>
+
+<!-- Inventory Alerts -->
+<% if (typeof inventoryAlerts !== 'undefined' && inventoryAlerts.length > 0) { %>
+<div class="card mb-4 border-danger">
+    <div class="card-header bg-danger text-white"><h2><i class="fa-solid fa-triangle-exclamation"></i> Low Stock Alerts</h2></div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead><tr><th>Type</th><th>Item</th><th>Quantity</th><th>Status</th></tr></thead>
+                <tbody><% inventoryAlerts.forEach(a => { %>
+                    <tr class="table-danger">
+                        <td><%= a.item_type %></td>
+                        <td><strong><%= a.item_name %></strong></td>
+                        <td><%= parseFloat(a.quantity).toLocaleString() %></td>
+                        <td><span class="badge badge-danger"><%= a.stock_status %></span></td>
+                    </tr>
+                <% }) %></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<% } %>
+
+<!-- Staff Directory -->
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h2><i class="fa-solid fa-users"></i> Staff Directory</h2>
+        <form method="GET" action="/management" class="form-inline">
+            <select name="role" onchange="this.form.submit()" class="form-control">
+                <option value="">All Roles</option>
+                <option value="Manager" <%= (typeof roleFilter !== 'undefined' && roleFilter === 'Manager') ? 'selected' : '' %>>Manager</option>
+                <option value="Farmer_Worker" <%= (typeof roleFilter !== 'undefined' && roleFilter === 'Farmer_Worker') ? 'selected' : '' %>>Farmer Worker</option>
+                <option value="Technician" <%= (typeof roleFilter !== 'undefined' && roleFilter === 'Technician') ? 'selected' : '' %>>Technician</option>
+            </select>
+        </form>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead><tr><th>Name</th><th>Role</th><th>Job Title</th><th>Hire Date</th><th>Salary</th><th>Actions</th></tr></thead>
+                <tbody><% workers.forEach(w => { %>
+                    <tr>
+                        <td><strong><%= w.FName %> <%= w.LName %></strong></td>
+                        <td><span class="badge badge-info"><%= w.worker_type %></span></td>
+                        <td><%= w.job_title %></td>
+                        <td><%= new Date(w.hire_date).toLocaleDateString() %></td>
+                        <td><%= parseFloat(w.monthly_salary).toLocaleString() %> EGP</td>
+                        <td style="white-space:nowrap">
+                            <button class="btn btn-sm btn-secondary" onclick="openWorkerEdit(<%= w.person_id %>, '<%= w.FName %>', '<%= w.LName %>', '<%= w.job_title %>', <%= w.monthly_salary %>, '<%= w.phone || '' %>', '<%= w.email || '' %>')" title="Edit"><i class="fa-solid fa-edit"></i></button>
+                            <form action="/management/worker/delete" method="POST" style="display:inline" onsubmit="return confirm('Delete this worker? This will remove their user account, payroll history, and unassign them from active tasks.')">
+                                <input type="hidden" name="person_id" value="<%= w.person_id %>">
+                                <button type="submit" class="btn btn-sm btn-danger" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                            </form>
+                        </td>
+                    </tr>
+                <% }) %></tbody>
+            </table>
+        </div>
+
+        <!-- Worker Edit Modal -->
+        <div id="workerEditModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1000; align-items:center; justify-content:center;">
+            <div style="background:var(--card-bg, #1e293b); padding:2rem; border-radius:12px; max-width:550px; width:90%;">
+                <h3 style="margin-top:0"><i class="fa-solid fa-user-pen"></i> Edit Worker</h3>
+                <form action="/management/worker/edit" method="POST">
+                    <input type="hidden" name="person_id" id="edit_worker_id">
+                    <div class="form-row">
+                        <div class="form-group"><label>First Name</label><input type="text" name="FName" id="edit_worker_fname" required></div>
+                        <div class="form-group"><label>Last Name</label><input type="text" name="LName" id="edit_worker_lname" required></div>
+                    </div>
+                    <div class="form-group"><label>Job Title</label><input type="text" name="job_title" id="edit_worker_jobtitle" required></div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Monthly Salary (EGP)</label><input type="number" step="0.01" name="monthly_salary" id="edit_worker_salary" min="0" required></div>
+                        <div class="form-group"><label>Phone</label><input type="text" name="phone" id="edit_worker_phone"></div>
+                    </div>
+                    <div class="form-group"><label>Email</label><input type="email" name="email" id="edit_worker_email"></div>
+                    <div style="display:flex;gap:0.5rem;margin-top:1rem;">
+                        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-save"></i> Save Changes</button>
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('workerEditModal').style.display='none'">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <script>
+        function openWorkerEdit(id, fname, lname, jobtitle, salary, phone, email) {
+            document.getElementById('edit_worker_id').value = id;
+            document.getElementById('edit_worker_fname').value = fname;
+            document.getElementById('edit_worker_lname').value = lname;
+            document.getElementById('edit_worker_jobtitle').value = jobtitle;
+            document.getElementById('edit_worker_salary').value = salary;
+            document.getElementById('edit_worker_phone').value = phone;
+            document.getElementById('edit_worker_email').value = email;
+            document.getElementById('workerEditModal').style.display = 'flex';
+        }
+        </script>
+    </div>
+</div>
+
+<!-- Audit Logs -->
+<div class="card mb-4">
+    <div class="card-header"><h2><i class="fa-solid fa-shield-halved"></i> System Audit Logs</h2></div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead><tr><th>Timestamp</th><th>User</th><th>Action</th><th>Entity</th><th>Details</th></tr></thead>
+                <tbody><% auditLogs.forEach(log => { %>
+                    <tr>
+                        <td><%= new Date(log.created_at).toLocaleString() %></td>
+                        <td><%= log.FName %> <%= log.LName %></td>
+                        <td><span class="badge badge-primary"><%= log.action %></span></td>
+                        <td><%= log.entity %></td>
+                        <td><%= log.details %></td>
+                    </tr>
+                <% }) %></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="grid-2">
+    <!-- Training Sessions -->
+    <div class="card">
+        <div class="card-header"><h2><i class="fa-solid fa-graduation-cap"></i> Training Sessions</h2></div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead><tr><th>Title</th><th>Date</th><th>Trainer</th><th>Status</th></tr></thead>
+                    <tbody><% training.forEach(t => { %>
+                        <tr>
+                            <td><%= t.title %></td>
+                            <td><%= new Date(t.scheduled_date).toLocaleDateString() %></td>
+                            <td><%= t.trainer %></td>
+                            <td><span class="badge badge-<%= t.status === 'Completed' ? 'success' : 'warning' %>"><%= t.status %></span></td>
+                        </tr>
+                    <% }) %></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inventory Status -->
+    <div class="card">
+        <div class="card-header"><h2><i class="fa-solid fa-boxes-stacked"></i> Inventory Status</h2></div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead><tr><th>Item</th><th>Qty</th><th>Status</th></tr></thead>
+                    <tbody><% inventory.forEach(i => { %>
+                        <tr>
+                            <td><%= i.item_name %></td>
+                            <td><%= parseFloat(i.quantity).toLocaleString() %></td>
+                            <td><span class="badge badge-<%= i.stock_status === 'OK' ? 'success' : 'danger' %>"><%= i.stock_status %></span></td>
+                        </tr>
+                    <% }) %></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Payroll Section -->
+<div class="card mt-4">
+    <div class="card-header"><h2><i class="fa-solid fa-file-invoice-dollar"></i> Human Resources & Payroll</h2></div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead><tr><th>Worker</th><th>Payment Date</th><th>Period</th><th>Net Amount</th></tr></thead>
+                <tbody><% payroll.forEach(p => { %>
+                    <tr>
+                        <td><%= p.FName %> <%= p.LName %></td>
+                        <td><%= new Date(p.payment_date).toLocaleDateString() %></td>
+                        <td><%= new Date(p.period_start).toLocaleDateString() %> - <%= new Date(p.period_end).toLocaleDateString() %></td>
+                        <td><strong><%= parseFloat(p.net_amount).toLocaleString() %> EGP</strong></td>
+                    </tr>
+                <% }) %></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer') %>

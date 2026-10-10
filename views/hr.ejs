@@ -1,0 +1,108 @@
+<%- include('partials/header') %>
+<div class="page-title"><h1><i class="fa-solid fa-id-card-clip"></i> Human Resources & Payroll</h1></div>
+
+<!-- ═══════════════ HR DASHBOARD SUMMARY ═══════════════ -->
+<div class="grid-2">
+    <div class="card">
+        <div class="card-header"><h2><i class="fa-solid fa-chart-line"></i> Attendance Rate</h2></div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="data-table"><thead><tr><th>Worker</th><th>Rate</th><th>Present</th><th>Absent</th></tr></thead>
+                <tbody><% (locals.attendanceSummary || []).forEach(s => { %><tr>
+                    <td><strong><%= s.full_name %></strong></td>
+                    <td><span class="badge badge-<%= s.attendance_rate_pct > 90 ? 'success' : s.attendance_rate_pct > 75 ? 'warning' : 'danger' %>"><%= s.attendance_rate_pct %>%</span></td>
+                    <td><%= s.present_days %></td><td><%= s.absent_days %></td>
+                </tr><% }) %></tbody></table>
+            </div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header"><h2><i class="fa-solid fa-money-check-dollar"></i> Payroll Summary</h2></div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="data-table"><thead><tr><th>Worker</th><th>Total Paid</th><th>Last Payment</th></tr></thead>
+                <tbody><% (locals.payrollSummary || []).forEach(s => { %><tr>
+                    <td><strong><%= s.full_name %></strong></td>
+                    <td class="text-success"><%= parseFloat(s.total_paid || 0).toLocaleString() %> EGP</td>
+                    <td><%= s.last_payment_date ? new Date(s.last_payment_date).toLocaleDateString() : '—' %></td>
+                </tr><% }) %></tbody></table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="grid-2">
+    <!-- ═══════════════ ATTENDANCE LOGGING ═══════════════ -->
+    <div class="card" id="attendance">
+        <div class="card-header"><h2><i class="fa-solid fa-clock"></i> Log Attendance</h2></div>
+        <div class="card-body">
+            <form action="/hr/attendance" method="POST">
+                <div class="form-row">
+                    <div class="form-group"><label>Worker</label><select name="worker_id" required><% (locals.workers || []).forEach(w => { %><option value="<%= w.person_id %>"><%= w.FName %> <%= w.LName %></option><% }) %></select></div>
+                    <div class="form-group"><label>Date</label><input type="date" name="work_date" value="<%= new Date().toISOString().split('T')[0] %>" max="<%= new Date().toISOString().split('T')[0] %>" required></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Check In</label><input type="time" name="check_in"></div>
+                    <div class="form-group"><label>Check Out</label><input type="time" name="check_out"></div>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select name="status">
+                        <option value="present">Present</option><option value="absent">Absent</option>
+                        <option value="late">Late</option><option value="on_leave">On Leave</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-check"></i> Save Attendance</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ═══════════════ PAYROLL ENTRY ═══════════════ -->
+    <div class="card" id="payroll">
+        <div class="card-header"><h2><i class="fa-solid fa-wallet"></i> Issue Payment</h2></div>
+        <div class="card-body">
+            <form action="/hr/payroll" method="POST">
+                <div class="form-row">
+                    <div class="form-group"><label>Worker</label><select name="worker_id" required><% workers.forEach(w => { %><option value="<%= w.person_id %>"><%= w.FName %> <%= w.LName %></option><% }) %></select></div>
+                    <div class="form-group"><label>Date</label><input type="date" name="payment_date" value="<%= new Date().toISOString().split('T')[0] %>" max="<%= new Date().toISOString().split('T')[0] %>" required></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Base Salary</label><input type="number" step="0.01" name="basic_salary" required></div>
+                    <div class="form-group"><label>Bonuses</label><input type="number" step="0.01" name="bonuses" value="0"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Deductions</label><input type="number" step="0.01" name="deductions" value="0"></div>
+                    <div class="form-group"><label>Period Start</label><input type="date" name="period_start"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Period End</label><input type="date" name="period_end"></div>
+                </div>
+                <button type="submit" class="btn btn-success w-100"><i class="fa-solid fa-receipt"></i> Process Payroll</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════ PERFORMANCE REVIEWS ═══════════════ -->
+<div class="card" id="reviews">
+    <div class="card-header"><h2><i class="fa-solid fa-star"></i> Performance Reviews</h2></div>
+    <div class="card-body">
+        <form action="/hr/performance" method="POST" class="mb-4">
+            <div class="grid-4">
+                <div class="form-group"><label>Worker</label><select name="worker_id" required><% (locals.workers || []).forEach(w => { %><option value="<%= w.person_id %>"><%= w.FName %> <%= w.LName %></option><% }) %></select></div>
+                <div class="form-group"><label>Review Date</label><input type="date" name="review_date" value="<%= new Date().toISOString().split('T')[0] %>" max="<%= new Date().toISOString().split('T')[0] %>" required></div>
+                <div class="form-group"><label>Score (1-10)</label><input type="number" name="score" min="1" max="10" required></div>
+                <div class="form-group"><label>Comments</label><textarea name="comments" rows="2"></textarea></div>
+                <button type="submit" class="btn btn-primary" style="margin-top:1.8rem"><i class="fa-solid fa-plus"></i> Submit Review</button>
+            </div>
+            <tbody><% (locals.reviews || []).forEach(r => { %><tr>
+                <td><%= new Date(r.review_date).toLocaleDateString() %></td>
+                <td><strong><%= r.FName %> <%= r.LName %></strong></td>
+                <td><span class="badge badge-<%= r.overall_score >= 8 ? 'success' : r.overall_score >= 5 ? 'warning' : 'danger' %>"><%= r.overall_score %>/10</span></td>
+                <td><%= r.reviewer_name %></td><td><%= r.comments || '—' %></td>
+            </tr><% }) %></tbody></table>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer') %>

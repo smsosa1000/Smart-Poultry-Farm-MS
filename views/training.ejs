@@ -1,0 +1,134 @@
+<%- include('partials/header') %>
+<div class="page-title"><h1><i class="fa-solid fa-graduation-cap"></i> Staff Training & Development</h1></div>
+
+<div class="grid-2">
+    <!-- ═══════════════ TRAINING SESSIONS ═══════════════ -->
+    <div class="card">
+        <div class="card-header"><h2><i class="fa-solid fa-chalkboard-user"></i> Create Training</h2></div>
+        <div class="card-body">
+            <form action="/training" method="POST">
+                <div class="form-group"><label>Title</label><input type="text" name="title" required></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Scheduled Date</label><input type="date" name="scheduled_date" required min="<%= new Date().toISOString().split('T')[0] %>"></div>
+                    <div class="form-group"><label>End Date</label><input type="date" name="end_date"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Trainer</label><input type="text" name="trainer"></div>
+                    <div class="form-group"><label>Location</label><input type="text" name="location"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Status</label>
+                        <select name="status">
+                            <option value="Planned">Planned</option>
+                            <option value="Ongoing">Ongoing</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Cancelled">Cancelled</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-calendar-plus"></i> Schedule Training</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ═══════════════ ENROLL WORKERS ═══════════════ -->
+    <div class="card" id="enroll">
+        <div class="card-header"><h2><i class="fa-solid fa-user-plus"></i> Enroll Worker</h2></div>
+        <div class="card-body">
+            <form action="/training/enroll" method="POST">
+                <div class="form-group"><label>Training Session</label><select name="training_id" required><% (locals.trainings || []).filter(t => t.status.toLowerCase() !== 'completed').forEach(t => { %><option value="<%= t.training_id %>"><%= t.title %> (<%= new Date(t.scheduled_date).toLocaleDateString() %>)</option><% }) %></select></div>
+                <div class="form-group"><label>Worker</label><select name="worker_id" required><% (locals.workers || []).forEach(w => { %><option value="<%= w.person_id %>"><%= w.FName %> <%= w.LName %></option><% }) %></select></div>
+                <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-link"></i> Enroll</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════ SESSIONS LIST ═══════════════ -->
+<div class="card">
+    <div class="card-header"><h2><i class="fa-solid fa-list-check"></i> Training Sessions</h2></div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="data-table"><thead><tr><th>Title</th><th>Date</th><th>Trainer</th><th>Location</th><th>Status</th></tr></thead>
+            <tbody><% (locals.trainings || []).forEach(t => { %><tr>
+                <td><strong><%= t.title %></strong></td><td><%= new Date(t.scheduled_date).toLocaleDateString() %></td>
+                <td><%= t.trainer || '—' %></td><td><%= t.location || '—' %></td>
+                <td><span class="badge badge-<%= t.status.toLowerCase() === 'completed' ? 'success' : t.status.toLowerCase() === 'ongoing' ? 'warning' : 'secondary' %>"><%= t.status %></span></td>
+            </tr><% }) %></tbody></table>
+        </div>
+    </div>
+</div>
+
+<!-- ═══════════════ ENROLLMENTS LIST ═══════════════ -->
+<div class="card" id="enrollments">
+    <div class="card-header"><h2><i class="fa-solid fa-user-graduate"></i> Training Progress</h2></div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="data-table"><thead><tr><th>Worker</th><th>Training</th><th>Status</th><th>Score</th><th>Certificate</th><th>Action</th></tr></thead>
+            <tbody><% (locals.enrollments || []).forEach(e => { %><tr>
+                <td><%= e.FName %> <%= e.LName %></td><td><%= e.training_title %></td>
+                <td><span class="badge badge-<%= e.completion_status === 'completed' ? 'success' : 'warning' %>"><%= e.completion_status %></span></td>
+                <td><%= e.score ? e.score + '%' : '—' %></td>
+                <td><i class="fa-solid <%= e.certificate_issued ? 'fa-certificate text-success' : 'fa-circle-xmark text-muted' %>"></i></td>
+                <td>
+                    <button class="btn btn-sm btn-primary" onclick="openEnrollmentModal(<%= JSON.stringify(e) %>)"><i class="fa-solid fa-edit"></i></button>
+                </td>
+            </tr><% }) %></tbody></table>
+        </div>
+    </div>
+</div>
+
+<div id="enrollmentOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:2000; align-items:center; justify-content:center;">
+    <div id="enrollmentModal" class="card" style="padding:2rem; width:400px; max-width:90%; margin:auto; background-color: var(--bg-color);">
+        <h3 style="margin-bottom:1rem">Update Enrollment</h3>
+        <div id="scoreErrorMsg" style="color:var(--danger); margin-bottom:1rem; display:none"></div>
+        <form action="/training/status" method="POST" onsubmit="return validateScore()">
+            <input type="hidden" name="enrollment_id" id="modal_id">
+            <div class="form-group"><label>Status</label><select name="completion_status"><option value="enrolled">Enrolled</option><option value="completed">Completed</option><option value="failed">Failed</option><option value="withdrawn">Withdrawn</option></select></div>
+            <div class="form-group"><label>Score (%) - Must be 0-100</label><input type="number" name="score" id="scoreInput" step="0.01" min="0" max="100"></div>
+            <div class="form-group"><label><input type="checkbox" name="certificate_issued"> Certificate Issued</label></div>
+            <div style="display:flex; gap:1rem; margin-top: 1rem;">
+                <button type="submit" class="btn btn-primary flex-1">Save</button>
+                <button type="button" class="btn btn-secondary flex-1" onclick="document.getElementById('enrollmentOverlay').style.display='none'">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openEnrollmentModal(data) {
+    document.getElementById('modal_id').value = data.enrollment_id;
+    const modal = document.getElementById('enrollmentModal');
+    document.getElementById('enrollmentOverlay').style.display = 'flex';
+    // Pre-fill
+    modal.querySelector('select[name="completion_status"]').value = data.completion_status;
+    modal.querySelector('input[name="score"]').value = data.score || '';
+    modal.querySelector('input[name="certificate_issued"]').checked = data.certificate_issued === 1;
+    document.getElementById('scoreErrorMsg').style.display = 'none';
+}
+
+function validateScore() {
+    const scoreInput = document.getElementById('scoreInput');
+    const scoreVal = scoreInput.value;
+    const errorMsg = document.getElementById('scoreErrorMsg');
+    
+    if (scoreVal !== '') {
+        const score = parseFloat(scoreVal);
+        if (isNaN(score) || score < 0 || score > 100) {
+            errorMsg.textContent = 'Score must be a number between 0 and 100.';
+            errorMsg.style.display = 'block';
+            return false;
+        }
+    }
+    return true;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Enable real-time synchronization for training data
+    realtimeSync.startSync('training');
+    // Enable auto-refresh every 50 seconds as fallback
+    setupAutoRefresh(50);
+});
+</script>
+
+<%- include('partials/footer') %>

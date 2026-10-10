@@ -1,0 +1,432 @@
+<%- include('partials/header') %>
+    <div class="page-title">
+        <h1><i class="fa-solid fa-file-invoice-dollar"></i> Purchase Orders</h1>
+        <div class="quick-actions">
+            <a href="/suppliers" class="btn btn-accent"><i class="fa-solid fa-truck-field"></i> Suppliers</a>
+            <button class="btn btn-primary"
+                onclick="document.getElementById('createPOSection').scrollIntoView({behavior:'smooth'})">
+                <i class="fa-solid fa-plus"></i> New Purchase Order
+            </button>
+        </div>
+    </div>
+
+    <!-- Status Flow -->
+    <div class="card mb-4">
+        <div class="card-body" style="text-align:center">
+            <small class="text-muted">PO Flow: </small>
+            <span class="badge badge-secondary">Draft</span>
+            <small class="text-muted"> → </small>
+            <span class="badge badge-primary">Sent</span>
+            <small class="text-muted"> → </small>
+            <span class="badge badge-warning">Confirmed</span>
+            <small class="text-muted"> → </small>
+            <span class="badge badge-success">Received (→ Stock)</span>
+        </div>
+    </div>
+
+    <!-- Orders Table -->
+    <div class="card">
+        <div class="card-header">
+            <h2><i class="fa-solid fa-list"></i> All Purchase Orders</h2>
+        </div>
+        <div class="card-body">
+            <% if (pos.length===0) { %>
+                <div class="empty-state">
+                    <i class="fa-solid fa-file-invoice-dollar fa-3x"></i>
+                    <h2>No Purchase Orders</h2>
+                    <p>Create a purchase order to restock supplies from your suppliers.</p>
+                </div>
+                <% } else { %>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>PO#</th>
+                                    <th>Supplier</th>
+                                    <th>Item Type</th>
+                                    <th>Description</th>
+                                    <th>Qty</th>
+                                    <th>Unit Price</th>
+                                    <th>Total</th>
+                                    <th>Order Date</th>
+                                    <th>Delivery</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% pos.forEach(po=> { %>
+                                    <tr>
+                                        <td><strong>
+                                                <%= po.po_number %>
+                                            </strong></td>
+                                        <td>
+                                            <%= po.company_name %>
+                                        </td>
+                                        <td><span
+                                                class="badge badge-<%= po.item_type.toLowerCase() === 'feed' ? 'warning' : po.item_type.toLowerCase() === 'medicine' ? 'danger' : po.item_type.toLowerCase() === 'vaccine' ? 'primary' : 'secondary' %>">
+                                                <%= po.item_type %>
+                                            </span></td>
+                                        <td>
+                                            <%= po.item_name || po.item_description %>
+                                        </td>
+                                        <td>
+                                            <% const descParts=(po.item_description || '' ).split(';'); let
+                                                displayUnit='' ; descParts.forEach(p=> { if(p.startsWith('unit:'))
+                                                displayUnit = p.split(':')[1]; });
+                                                %>
+                                                <%= parseFloat(po.quantity).toLocaleString() %>
+                                                    <%= displayUnit %>
+                                        </td>
+                                        <td>
+                                            <%= parseFloat(po.unit_price).toFixed(2) %> EGP
+                                        </td>
+                                        <td><strong>
+                                                <%= parseFloat(po.total_amount || 0).toLocaleString('en',
+                                                    {minimumFractionDigits:2}) %> EGP
+                                            </strong></td>
+                                        <td>
+                                            <%= new Date(po.order_date).toLocaleDateString() %>
+                                        </td>
+                                        <td>
+                                            <%= (po.delivery_date || po.expected_delivery_date) ? new
+                                                Date(po.delivery_date || po.expected_delivery_date).toLocaleDateString() : '—' %>
+                                        </td>
+                                        <td>
+                                            <span
+                                                class="badge badge-<%= po.status.toLowerCase() === 'received' ? 'success' : po.status.toLowerCase() === 'confirmed' ? 'warning' : po.status.toLowerCase() === 'sent' ? 'primary' : po.status.toLowerCase() === 'cancelled' ? 'danger' : 'secondary' %>">
+                                                <%= po.status %>
+                                            </span>
+                                        </td>
+                                        <td style="white-space:nowrap">
+                                            <% if (po.status.toLowerCase() === 'draft') { %>
+                                                <form action="/purchase-orders/update-status" method="POST"
+                                                    style="display:inline"
+                                                    onsubmit="return handleSentSubmit(this, '<%= po.email || '' %>', '<%= po.po_number %>', '<%= po.item_name || po.item_description %>', '<%= po.quantity %>', '<%= po.unit_price %>', '<%= displayUnit %>')">
+                                                    <input type="hidden" name="po_id" value="<%= po.po_id %>">
+                                                    <input type="hidden" name="new_status" value="sent">
+                                                    <button type="submit" class="btn btn-sm btn-primary" title="Send"><i
+                                                            class="fa-solid fa-paper-plane"></i></button>
+                                                </form>
+                                            <% } else if (po.status.toLowerCase() === 'sent') { %>
+                                                <form action="/purchase-orders/update-status" method="POST"
+                                                    style="display:inline"
+                                                    onsubmit="return confirm('Mark as Confirmed by supplier?')">
+                                                    <input type="hidden" name="po_id" value="<%= po.po_id %>">
+                                                    <input type="hidden" name="new_status" value="confirmed">
+                                                    <button class="btn btn-sm btn-accent" title="Confirm"><i
+                                                            class="fa-solid fa-check"></i></button>
+                                                </form>
+                                            <% } else if (po.status.toLowerCase() === 'confirmed') { %>
+                                                <form action="/purchase-orders/receive" method="POST"
+                                                    style="display:inline"
+                                                    onsubmit="return confirm('Mark received and update stock?')">
+                                                    <input type="hidden" name="po_id" value="<%= po.po_id %>">
+                                                    <button class="btn btn-sm btn-primary" title="Receive"><i
+                                                            class="fa-solid fa-box-open"></i></button>
+                                                </form>
+                                            <% } %>
+                                            <% if (po.status.toLowerCase() !== 'received' && po.status.toLowerCase() !== 'cancelled') { %>
+                                                <form action="/purchase-orders/update-status"
+                                                    method="POST" style="display:inline"
+                                                    onsubmit="return confirm('Cancel this PO?')">
+                                                    <input type="hidden" name="po_id"
+                                                        value="<%= po.po_id %>">
+                                                    <input type="hidden" name="new_status"
+                                                        value="cancelled">
+                                                    <button class="btn btn-sm btn-danger"
+                                                        title="Cancel"><i
+                                                            class="fa-solid fa-times"></i></button>
+                                                </form>
+                                            <% } %>
+                                        </td>
+                                    </tr>
+                                    <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                    <% } %>
+        </div>
+    </div>
+
+    <!-- Create PO Form -->
+    <div class="card" id="createPOSection">
+        <div class="card-header">
+            <h2><i class="fa-solid fa-plus"></i> Create Purchase Order</h2>
+        </div>
+        <div class="card-body">
+            <form action="/purchase-orders" method="POST" id="poForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Supplier *</label>
+                        <select name="supplier_id" id="po_supplier" required onchange="filterItemTypes()">
+                            <option value="">— Select Supplier —</option>
+                            <% suppliers.forEach(s=> { %>
+                                <option value="<%= s.supplier_id %>" data-email="<%= s.email || '' %>" data-types="<%= s.supplier_type %>">
+                                    <%= s.company_name %>
+                                </option>
+                            <% }) %>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Item Type *</label>
+                        <select name="item_type" id="item_type" required onchange="toggleItems()">
+                            <option value="feed">Feed</option>
+                            <option value="medicine">Medicine</option>
+                            <option value="vaccine">Vaccine</option>
+                            <option value="equipment">Equipment</option>
+                            <option value="chicks">Chicks</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group" id="feed_select_grp">
+                        <label>Feed Type</label>
+                        <select name="item_ref" id="feed_select">
+                            <option value="">— Select Feed —</option>
+                            <% feedTypes.forEach(f=> { %><option value="<%= f.feed_type_id %>" data-supplier="<%= f.supplier_id || '' %>">
+                                    <%= f.name %>
+                                </option>
+                                <% }) %>
+                        </select>
+                    </div>
+                    <div class="form-group" id="med_select_grp" style="display:none">
+                        <label>Medicine</label>
+                        <select name="item_ref" id="med_select">
+                            <option value="">— Select Medicine —</option>
+                            <% medicines.forEach(m=> { %><option value="<%= m.medicine_id %>" data-supplier="<%= m.supplier_id || '' %>">
+                                    <%= m.medicine_name %>
+                                </option>
+                                <% }) %>
+                        </select>
+                    </div>
+                    <div class="form-group" id="vac_select_grp" style="display:none">
+                        <label>Vaccine</label>
+                        <select name="item_ref" id="vac_select">
+                            <option value="">— Select Vaccine —</option>
+                            <% vaccines.forEach(v=> { %><option value="<%= v.vaccine_id %>" data-supplier="<%= v.supplier_id || '' %>">
+                                    <%= v.vaccine_name %>
+                                </option>
+                                <% }) %>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Storage Location *</label>
+                        <select name="storage_id" id="po_storage" required>
+                            <% storages.forEach(s=> { %>
+                            <option value="<%= s.storage_id %>" data-type="<%= s.storage_type %>">
+                                    <%= s.storage_name %>
+                                </option>
+                                <% }) %>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group"><label>Quantity *</label><input id="po_quantity" name="quantity"
+                            type="number" step="0.01" min="0.01" placeholder="Quantity" required oninput="calcPOTotal()"></div>
+                    <div class="form-group">
+                        <label>Unit</label>
+                        <select name="unit" id="po_unit" onchange="calcPOTotal()">
+                            <option value="kg">Kilograms (kg)</option>
+                            <option value="bag">Bags</option>
+                            <option value="vial">Vials</option>
+                            <option value="liter">Liters</option>
+                            <option value="box">Boxes</option>
+                            <option value="bird">Birds</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Unit Price (EGP) *</label><input name="unit_price" id="po_unit_price"
+                            type="number" step="0.01" min="0" placeholder="Unit Price" required oninput="calcPOTotal()"></div>
+                    <div class="form-group"><label>Total Amount</label><input type="text" id="po_total_display" readonly
+                            style="font-weight:700;color:var(--success)" value="0.00 EGP"></div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group"><label>Expected Delivery Date</label><input name="expected_delivery_date"
+                            type="date" min="<%= new Date().toISOString().split('T')[0] %>"></div>
+                    <div class="form-group"><label>Initial Status</label>
+                        <select name="initial_status" id="po_initial_status">
+                            <option value="draft">Save as Draft</option>
+                            <option value="sent">Send to Supplier</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-save"></i> Create Purchase
+                    Order</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function filterItemTypes() {
+            const supSelect = document.getElementById('po_supplier');
+            const typeSelect = document.getElementById('item_type');
+            if (supSelect.selectedIndex <= 0) return;
+            
+            const selectedSup = supSelect.options[supSelect.selectedIndex];
+            const supTypes = (selectedSup.getAttribute('data-types') || '').split(',').map(t => t.trim().toLowerCase());
+            const supId = selectedSup.value;
+
+            // Show/Hide item types based on supplier type
+            for (let i = 0; i < typeSelect.options.length; i++) {
+                const opt = typeSelect.options[i];
+                if (supTypes.includes(opt.value.toLowerCase()) || opt.value === 'other') {
+                    opt.style.display = '';
+                    opt.disabled = false;
+                } else {
+                    opt.style.display = 'none';
+                    opt.disabled = true;
+                }
+            }
+            
+            // Auto-select first available type
+            for (let i = 0; i < typeSelect.options.length; i++) {
+                if (!typeSelect.options[i].disabled) {
+                    typeSelect.selectedIndex = i;
+                    break;
+                }
+            }
+
+            toggleItems();
+        }
+
+        function toggleItems() {
+            const t = document.getElementById('item_type').value;
+            const supId = document.getElementById('po_supplier').value;
+            
+            const groups = {
+                'feed': 'feed_select',
+                'medicine': 'med_select',
+                'vaccine': 'vac_select'
+            };
+
+            // Toggle group visibility
+            Object.keys(groups).forEach(key => {
+                const grp = document.getElementById(key + '_select_grp');
+                const sel = document.getElementById(groups[key]);
+                if (t === key) {
+                    grp.style.display = '';
+                    sel.disabled = false;
+                    
+                    // Filter options within this select by supplier_id
+                    for (let i = 0; i < sel.options.length; i++) {
+                        const opt = sel.options[i];
+                        if (opt.value === "") continue; // placeholder
+                        const itemSupId = opt.getAttribute('data-supplier');
+                        if (!itemSupId || itemSupId === supId) {
+                            opt.style.display = '';
+                            opt.disabled = false;
+                        } else {
+                            opt.style.display = 'none';
+                            opt.disabled = true;
+                        }
+                    }
+                } else {
+                    grp.style.display = 'none';
+                    sel.disabled = true;
+                }
+            });
+
+            // Filter storage locations by item type
+            const storageSelect = document.getElementById('po_storage');
+            if (storageSelect) {
+                const typeToStorageMap = {
+                    'feed': 'Feed_Silo',
+                    'medicine': 'Medicine_Fridge',
+                    'vaccine': 'Vaccine_Cooler',
+                    'equipment': 'Equipment_Room'
+                };
+                const matchType = typeToStorageMap[t] || '';
+                let firstVisible = -1;
+                for (let i = 0; i < storageSelect.options.length; i++) {
+                    const opt = storageSelect.options[i];
+                    const sType = opt.getAttribute('data-type') || '';
+                    if (!matchType || sType === matchType) {
+                        opt.style.display = '';
+                        opt.disabled = false;
+                        if (firstVisible < 0) firstVisible = i;
+                    } else {
+                        opt.style.display = 'none';
+                        opt.disabled = true;
+                    }
+                }
+                if (firstVisible >= 0) storageSelect.selectedIndex = firstVisible;
+            }
+        }
+        function calcPOTotal() {
+            const qtyInput = document.getElementById('po_quantity');
+            const priceInput = document.getElementById('po_unit_price');
+            const display = document.getElementById('po_total_display');
+            if (!qtyInput || !priceInput || !display) return;
+            const qty = parseFloat(qtyInput.value) || 0;
+            const price = parseFloat(priceInput.value) || 0;
+            const total = qty * price;
+            display.value = total.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' EGP';
+        }
+
+        // Add listeners for auto-calculation
+        window.addEventListener('load', () => {
+            toggleItems();
+            const qtyInput = document.getElementById('po_quantity');
+            const priceInput = document.getElementById('po_unit_price');
+            if (qtyInput) qtyInput.addEventListener('input', calcPOTotal);
+            if (priceInput) priceInput.addEventListener('input', calcPOTotal);
+
+            // Also update on unit change just in case
+            const unitInput = document.getElementById('po_unit');
+            if (unitInput) unitInput.addEventListener('change', calcPOTotal);
+        });
+
+        function handleSentSubmit(form, email, po_number, description, qty, price, unit) {
+            if (!confirm('Open Outlook/Mail with order details and mark as Sent?')) return false;
+            if (email) {
+                const body = `Hello,\n\nWe would like to place the following order:\n\nPO Number: ${po_number}\nItem Description: ${description}\nQuantity: ${qty} ${unit || ''}\nUnit Price: ${price} EGP\nTotal Amount: ${(qty * price).toFixed(2)} EGP\n\nPlease confirm receipt and let us know the expected delivery time.\n\nBest regards,\nSmart Poultry Farm Management`;
+                window.location.href = `mailto:${email}?subject=Purchase Order ${po_number}&body=${encodeURIComponent(body)}`;
+            }
+            return true;
+        }
+
+        document.getElementById('poForm').addEventListener('submit', function (e) {
+            const status = document.getElementById('po_initial_status').value;
+            if (status === 'sent') {
+                const supSelect = document.getElementById('po_supplier');
+                const supOpt = supSelect.options[supSelect.selectedIndex];
+                const email = supOpt.getAttribute('data-email');
+                if (email) {
+                    e.preventDefault();
+                    const qty = document.getElementById('po_quantity').value;
+                    const unit = document.getElementById('po_unit').value;
+                    const price = document.getElementById('po_unit_price').value;
+                    const itemType = document.getElementById('item_type').value;
+
+                    // Get specific item name
+                    let itemName = itemType;
+                    let selectId = '';
+                    if (itemType === 'feed') selectId = 'feed_select';
+                    else if (itemType === 'medicine') selectId = 'med_select';
+                    else if (itemType === 'vaccine') selectId = 'vac_select';
+
+                    if (selectId) {
+                        const itemSelect = document.getElementById(selectId);
+                        if (itemSelect && itemSelect.selectedIndex >= 0) {
+                            itemName = itemSelect.options[itemSelect.selectedIndex].text;
+                        }
+                    }
+
+                    const body = `Hello,\n\nWe would like to place a new order for:\n\nItem: ${itemName} (${itemType})\nQuantity: ${qty} ${unit}\nUnit Price: ${price} EGP\nTotal Amount: ${(qty * price).toFixed(2)} EGP\n\nPlease process this order and provide us with the confirmation.\n\nThank you,\nSmart Poultry Farm Management`;
+
+                    // Open mail client
+                    window.location.href = `mailto:${email}?subject=New Purchase Order Request - ${itemName}&body=${encodeURIComponent(body)}`;
+
+                    // Allow time for mailto to trigger before submitting form
+                    setTimeout(() => { this.submit(); }, 1200);
+                }
+            }
+        });
+    </script>
+
+    <%- include('partials/footer') %>

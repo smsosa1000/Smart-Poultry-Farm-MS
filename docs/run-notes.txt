@@ -1,0 +1,21 @@
+# Modified files with DB password:
+# - .env
+# - config/db.js
+# - seed_v6.js
+# - run_schema.js
+# - update_db.js
+# - test_ops.js
+# - check_worker.js
+# - alter_db.js
+
+# 1. Re-run the schema to add the fixed views
+node run_schema.js
+
+# 2. Re-run the seed (it will now succeed with the new stock levels)
+node seed_v6.js
+
+# 3. Start the server
+node server.js
+
+# reset server
+Stop-Process -Id (Get-NetTCPConnection -LocalPort 5000).OwningProcess -Force

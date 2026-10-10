@@ -1,0 +1,123 @@
+<%- include('../partials/header') %>
+
+<div class="auth-container">
+    <div class="auth-card signup-card">
+        <div class="auth-logo">
+            <div class="logo-icon"><i class="fa-solid fa-user-plus"></i></div>
+            <h1>Create Staff Account</h1>
+            <p class="text-muted">Admin-only: Register a new worker in the system</p>
+        </div>
+
+        <% if (error) { %>
+            <div class="alert alert-error"><i class="fa-solid fa-triangle-exclamation"></i> <%= error %></div>
+        <% } %>
+
+        <form action="/signup" method="POST" class="auth-form">
+            <div class="form-section-title">Login Credentials</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+            </div>
+
+            <div class="form-section-title">Worker Information</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="FName">First Name</label>
+                    <input type="text" id="FName" name="FName" required>
+                </div>
+                <div class="form-group">
+                    <label for="LName">Last Name</label>
+                    <input type="text" id="LName" name="LName" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="national_ID">National ID</label>
+                    <input type="text" id="national_ID" name="national_ID" required>
+                </div>
+                <div class="form-group">
+                    <label for="monthly_salary">Salary (EGP)</label>
+                    <input type="number" id="monthly_salary" name="monthly_salary" value="3000">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="user_role">System Role</label>
+                    <select id="user_role" name="user_role" required onchange="toggleRoleFields(this.value)">
+                        <option value="Farmer_Worker">Farmer Worker</option>
+                        <option value="Manager">Manager</option>
+                        <option value="Technician">Technician</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="job_title">Job Title</label>
+                    <input type="text" id="job_title" name="job_title" value="Staff" required>
+                </div>
+            </div>
+
+            <div id="farmer-fields">
+                <div class="form-section-title">Farmer Details</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="assigned_area">Area</label>
+                        <select id="assigned_area" name="assigned_area">
+                            <option>Block A</option><option>Block B</option><option>Block C</option><option>Block D</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="shift_time">Shift</label>
+                        <select id="shift_time" name="shift_time">
+                            <option>Morning</option><option>Evening</option><option>Night</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div id="manager-fields" style="display:none">
+                <div class="form-section-title">Manager Details</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="contract_type">Contract</label>
+                        <select id="contract_type" name="contract_type">
+                            <option>Full-Time</option><option>Contract</option><option>Part-Time</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="years_experience">Experience (years)</label>
+                        <input type="number" id="years_experience" name="years_experience" value="0">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="education_level">Education</label>
+                    <input type="text" id="education_level" name="education_level" value="BSc Agriculture">
+                </div>
+            </div>
+            <div id="tech-fields" style="display:none">
+                <div class="form-section-title">Technician Details</div>
+                <div class="form-group">
+                    <label for="specialization">Specialization</label>
+                    <input type="text" id="specialization" name="specialization" value="General Maintenance">
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 btn-lg mt-4">
+                <i class="fa-solid fa-user-plus"></i> Create Account
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleRoleFields(role) {
+    document.getElementById('farmer-fields').style.display = role === 'Farmer_Worker' ? 'block' : 'none';
+    document.getElementById('manager-fields').style.display = role === 'Manager' ? 'block' : 'none';
+    document.getElementById('tech-fields').style.display = role === 'Technician' ? 'block' : 'none';
+}
+</script>
+
+<%- include('../partials/footer') %>

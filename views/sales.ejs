@@ -1,0 +1,103 @@
+<%- include('partials/header') %>
+<div class="page-title">
+    <h1><i class="fa-solid fa-hand-holding-dollar"></i> Sales & Revenue</h1>
+    <div class="quick-actions">
+        <a href="/sales-orders" class="btn btn-accent"><i class="fa-solid fa-file-invoice"></i> Sales Orders</a>
+    </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="stats-grid">
+    <div class="stat-card stat-success">
+        <div class="stat-icon"><i class="fa-solid fa-sack-dollar"></i></div>
+        <div class="stat-info"><h3>Total Revenue</h3><div class="value"><%= stats.totalRevenue.toLocaleString('en', {minimumFractionDigits:2}) %> EGP</div></div>
+    </div>
+    <div class="stat-card stat-primary">
+        <div class="stat-icon"><i class="fa-solid fa-dove"></i></div>
+        <div class="stat-info"><h3>Birds Sold</h3><div class="value"><%= stats.totalBirds.toLocaleString() %></div></div>
+    </div>
+</div>
+
+<div class="split-layout">
+    <div class="card flex-1">
+        <div class="card-header"><h2><i class="fa-solid fa-plus"></i> Record Sale</h2></div>
+        <div class="card-body">
+            <form action="/sales" method="POST">
+                <div class="form-group">
+                    <label for="cycle_id">Cycle *</label>
+                    <select id="cycle_id" name="cycle_id" required>
+                        <% cycles.forEach(c => { %><option value="<%= c.cycle_id %>">#<%= c.cycle_id %> - <%= c.breed_name %> (<%= c.cycle_status %>)</option><% }) %>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="customer_id">Customer</label>
+                    <select id="customer_id" name="customer_id">
+                        <option value="">— Walk-in / Cash Sale —</option>
+                        <% customers.forEach(c => { %><option value="<%= c.person_id %>"><%= c.name %><%= c.company_name ? ' (' + c.company_name + ')' : '' %></option><% }) %>
+                    </select>
+                </div>
+                <% if (pendingSOs.length > 0) { %>
+                <div class="form-group">
+                    <label for="order_id">Link to Sales Order (optional)</label>
+                    <select id="order_id" name="order_id">
+                        <option value="">— No linked order —</option>
+                        <% pendingSOs.forEach(so => { %><option value="<%= so.order_id %>"><%= so.order_number %> — <%= so.customer_name %> (<%= so.birds_quantity %> birds)</option><% }) %>
+                    </select>
+                </div>
+                <% } %>
+                <div class="form-row">
+                    <div class="form-group"><label for="sale_date">Date *</label><input type="date" id="sale_date" name="sale_date" value="<%= new Date().toISOString().split('T')[0] %>" min="<%= new Date().toISOString().split('T')[0] %>" required></div>
+                    <div class="form-group"><label for="birds_sold">Birds Sold *</label><input type="number" id="birds_sold" name="birds_sold" min="1" required></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label for="total_weight_kg">Total Weight (kg) *</label><input type="number" step="0.01" id="total_weight_kg" name="total_weight_kg" required></div>
+                    <div class="form-group"><label for="price_per_kg">Price/kg (EGP) *</label><input type="number" step="0.01" id="price_per_kg" name="price_per_kg" required></div>
+                </div>
+                <div class="form-group">
+                    <label>Total Revenue (auto)</label>
+                    <input type="text" id="sale_total_display" readonly style="font-weight:700;color:var(--success)" value="0.00 EGP">
+                </div>
+                <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-save"></i> Record Sale</button>
+            </form>
+        </div>
+    </div>
+    <div class="card flex-2">
+        <div class="card-header"><h2><i class="fa-solid fa-list"></i> Sales History</h2></div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead><tr><th>Date</th><th>Cycle</th><th>Customer</th><th>SO#</th><th>Birds</th><th>Weight</th><th>Price/kg</th><th>Revenue</th></tr></thead>
+                    <tbody>
+                        <% sales.forEach(s => { %>
+                        <tr>
+                            <td><%= new Date(s.sale_date).toLocaleDateString() %></td>
+                            <td>#<%= s.cycle_id %> — <%= s.breed_name %></td>
+                            <td><%- s.customer_name || '<span class="text-muted">Walk-in</span>' %></td>
+                            <td><%- s.order_number ? '<span class="badge badge-primary">' + s.order_number + '</span>' : '—' %></td>
+                            <td><%= s.birds_sold.toLocaleString() %></td>
+                            <td><%= parseFloat(s.total_weight_kg).toLocaleString() %> kg</td>
+                            <td><%= parseFloat(s.price_per_kg).toFixed(2) %> EGP</td>
+                            <td class="text-success"><strong><%= parseFloat(s.total_revenue).toLocaleString() %> EGP</strong></td>
+                        </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const w = document.getElementById('total_weight_kg');
+    const p = document.getElementById('price_per_kg');
+    const d = document.getElementById('sale_total_display');
+    function calc() {
+        const total = (parseFloat(w.value) || 0) * (parseFloat(p.value) || 0);
+        d.value = total.toLocaleString('en', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' EGP';
+    }
+    if (w && p) { w.addEventListener('input', calc); p.addEventListener('input', calc); }
+});
+</script>
+
+<%- include('partials/footer') %>

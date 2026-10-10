@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Smart Poultry Farm Management System - Professional farm operations management">
+    <title>Smart Poultry Farm v5.1</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<% if (user) { %>
+    <div class="app-layout">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fa-solid fa-kiwi-bird"></i> PoultryFarm</h2>
+                <button class="mobile-close" id="mobile-close"><i class="fa-solid fa-times"></i></button>
+            </div>
+            <div class="user-info">
+                <div class="user-avatar"><%= user.username.charAt(0).toUpperCase() %></div>
+                <div>
+                    <strong><%= user.username %></strong><br>
+                    <small class="role-badge role-<%= user.user_role.toLowerCase() %>">
+                        <%= user.is_admin ? '👑 Admin' : user.user_role.replace('_', ' ') %>
+                    </small>
+                </div>
+            </div>
+
+            <nav class="nav-menu">
+                    <a href="/dashboard" class="nav-link"><i class="fa-solid fa-chart-pie"></i> Dashboard</a>
+                    <a href="/ai-assistant" class="nav-link"><i class="fa-solid fa-robot"></i> Smart Assistant</a>
+
+                <% if (user.is_admin || user.user_role === 'Manager') { %>
+                    <div class="nav-divider">Farm Operations</div>
+                    <a href="/cycles/new" class="nav-link"><i class="fa-solid fa-circle-plus"></i> Create Cycle</a>
+                    <a href="/cycles" class="nav-link"><i class="fa-solid fa-arrows-spin"></i> View Cycles</a>
+                    <a href="/logs" class="nav-link"><i class="fa-solid fa-clipboard-list"></i> Daily Logs</a>
+                    <a href="/operations" class="nav-link"><i class="fa-solid fa-stethoscope"></i> Operations</a>
+                    <a href="/qc" class="nav-link"><i class="fa-solid fa-clipboard-check"></i> Quality Control</a>
+
+                    <div class="nav-divider">Supply Chain</div>
+                    <a href="/suppliers" class="nav-link"><i class="fa-solid fa-truck-field"></i> Suppliers</a>
+                    <a href="/purchase-orders" class="nav-link"><i class="fa-solid fa-file-invoice-dollar"></i> Purchase Orders</a>
+                    <a href="/customers" class="nav-link"><i class="fa-solid fa-users"></i> Customers</a>
+                    <a href="/sales-orders" class="nav-link"><i class="fa-solid fa-file-invoice"></i> Sales Orders</a>
+
+                    <div class="nav-divider">Finance</div>
+                    <a href="/sales" class="nav-link"><i class="fa-solid fa-hand-holding-dollar"></i> Sales</a>
+                    <a href="/expenses" class="nav-link"><i class="fa-solid fa-money-bill-transfer"></i> Expenses</a>
+
+                    <div class="nav-divider">Analytics & HR</div>
+                    <a href="/reports" class="nav-link"><i class="fa-solid fa-chart-line"></i> Reports</a>
+                    <a href="/management" class="nav-link"><i class="fa-solid fa-users-gear"></i> System Management</a>
+                    <a href="/training" class="nav-link"><i class="fa-solid fa-graduation-cap"></i> Training</a>
+
+                <% } else if (user.user_role === 'Farmer_Worker') { %>
+                    <div class="nav-divider">My Daily Tasks</div>
+                    <a href="/logs" class="nav-link"><i class="fa-solid fa-clipboard-list"></i> Record Daily Logs</a>
+                    <a href="/operations" class="nav-link"><i class="fa-solid fa-pills"></i> Treatments</a>
+                    <a href="/qc" class="nav-link"><i class="fa-solid fa-clipboard-check"></i> Quality Check</a>
+                    <a href="/cycles" class="nav-link"><i class="fa-solid fa-arrows-spin"></i> Cycle Overview</a>
+                <% } else if (user.user_role === 'Technician') { %>
+                    <div class="nav-divider">Technical Ops</div>
+                    <a href="/operations#maintenance" class="nav-link"><i class="fa-solid fa-wrench"></i> Maintenance</a>
+                    <a href="/operations#devices" class="nav-link"><i class="fa-solid fa-microchip"></i> Device Registry</a>
+                    <a href="/qc" class="nav-link"><i class="fa-solid fa-clipboard-check"></i> QC Inspections</a>
+                    <a href="/training" class="nav-link"><i class="fa-solid fa-graduation-cap"></i> Training Sessions</a>
+                <% } %>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button id="theme-toggle" class="btn-theme"><i class="fa-solid fa-moon"></i> Theme</button>
+                <a href="/logout" class="btn-logout"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-header no-print" style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; margin-bottom: 1.5rem;">
+                <div><button id="toggle-menu" class="header-icon-btn"><i class="fa-solid fa-bars"></i></button></div>
+                <h2 class="mobile-title" style="flex:1; text-align:center; margin:0; display: none;">PoultryFarm</h2>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <button id="qr-btn" class="header-icon-btn" title="Show Network QR Code"><i class="fa-solid fa-qrcode"></i></button>
+                    <button id="refresh-btn" class="header-icon-btn" title="Refresh page"><i class="fa-solid fa-arrows-rotate"></i></button>
+                </div>
+            </header>
+
+            <!-- QR Code Modal -->
+            <div id="qr-modal" class="qr-modal">
+                <div class="qr-modal-content">
+                    <button class="qr-modal-close" onclick="document.getElementById('qr-modal').style.display='none'">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                    <h2 style="text-align: center; margin-top: 0">📱 Network Access</h2>
+                    <div class="qr-container">
+                        <div id="qr-code" style="display: flex; justify-content: center; align-items: center;"></div>
+                    </div>
+                    <div class="qr-info">
+                        <p><strong style="color: var(--text-main)">Access from other devices:</strong></p>
+                        <div class="qr-url-box">
+                            <code><%= networkURL %></code>
+                            <button class="btn-copy" onclick="copyToClipboard('<%= networkURL %>')">
+                                <i class="fa-solid fa-copy"></i> Copy
+                            </button>
+                        </div>
+                        <div style="margin-top: 1rem; padding: 1rem; background: rgba(99, 102, 241, 0.1); border-radius: 8px; border: 1px solid var(--border);">
+                            <p class="text-muted" style="margin: 0; font-size: 0.9em; line-height: 1.5">
+                                ✓ Same network required<br>
+                                ✓ Scan QR code to connect<br>
+                                ✓ Or copy & paste the URL above
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <% if (typeof flash !== 'undefined' && flash) { %>
+                <div class="alert alert-<%= flash.type %>"><i class="fa-solid fa-circle-info"></i> <%= flash.message %></div>
+            <% } %>
+
+<% } else { %>
+    <div class="guest-layout">
+        <button id="theme-toggle-guest" class="btn-theme-absolute"><i class="fa-solid fa-moon"></i></button>
+<% } %>

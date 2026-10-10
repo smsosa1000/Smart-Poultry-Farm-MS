@@ -1,0 +1,112 @@
+<% if (user) { %>
+        </main>
+    </div>
+<% } else { %>
+    </div>
+<% } %>
+    <script src="/js/main.js"></script>
+    <script src="/js/realtime-sync.js"></script>
+    <script>
+        // Initialize QR Code Modal using API-based QR generation (no CDN library needed)
+        document.addEventListener('DOMContentLoaded', () => {
+            const qrBtn = document.getElementById('qr-btn');
+            const qrModal = document.getElementById('qr-modal');
+            const qrCodeContainer = document.getElementById('qr-code');
+            const networkURL = '<%= networkURL %>';
+
+            console.log('[QR INIT] Button:', !!qrBtn, 'Modal:', !!qrModal, 'Container:', !!qrCodeContainer);
+
+            // Initialize modal as hidden
+            if (qrModal) {
+                qrModal.style.display = 'none';
+            }
+
+            // QR Button click handler
+            if (qrBtn && qrModal && qrCodeContainer) {
+                qrBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Toggle modal visibility
+                    const isVisible = qrModal.style.display !== 'none' && qrModal.style.display !== '';
+                    qrModal.style.display = isVisible ? 'none' : 'flex';
+                    
+                    console.log('[QR CLICK] Modal visible:', !isVisible);
+                    
+                    // Generate QR code on first open
+                    if (!isVisible && qrCodeContainer.innerHTML === '') {
+                        try {
+                            console.log('[QR GEN] Starting QR code generation for URL:', networkURL);
+                            
+                            // Use QR server API for QR code generation (avoids CORS/CSP issues)
+                            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(networkURL)}`;
+                            
+                            // Create img element for QR code
+                            const img = document.createElement('img');
+                            img.src = qrApiUrl;
+                            img.alt = 'QR Code to network URL';
+                            img.style.maxWidth = '100%';
+                            img.style.height = 'auto';
+                            img.style.borderRadius = '0.5rem';
+                            
+                            // Error handling for image load
+                            img.onerror = () => {
+                                console.error('[QR ERROR] Failed to load QR code image');
+                                qrCodeContainer.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--danger);"><p>⚠️ Error loading QR code</p></div>';
+                            };
+                            
+                            // On successful load
+                            img.onload = () => {
+                                console.log('[QR GEN] QR code generated successfully');
+                            };
+                            
+                            // Clear and append image
+                            qrCodeContainer.innerHTML = '';
+                            qrCodeContainer.appendChild(img);
+                            
+                        } catch (err) {
+                            console.error('[QR ERROR]', err.message);
+                            qrCodeContainer.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--danger);"><p>⚠️ Error generating QR code</p></div>';
+                        }
+                    }
+                });
+
+                // Close modal when clicking outside
+                qrModal.addEventListener('click', (e) => {
+                    if (e.target === qrModal) {
+                        qrModal.style.display = 'none';
+                    }
+                });
+            } else {
+                console.warn('[QR WARN] Some QR elements not found', { qrBtn: !!qrBtn, qrModal: !!qrModal, qrCodeContainer: !!qrCodeContainer });
+            }
+
+            // Keyboard escape to close modal
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && qrModal && qrModal.style.display !== 'none') {
+                    qrModal.style.display = 'none';
+                }
+            });
+        });
+
+        // Copy to clipboard function
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = event.target.closest('.btn-copy');
+                if (btn) {
+                    const originalHTML = btn.innerHTML;
+                    btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+                    btn.style.background = 'var(--success)';
+                    setTimeout(() => {
+                        btn.innerHTML = originalHTML;
+                        btn.style.background = '';
+                    }, 2000);
+                }
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy: ' + err.message);
+            });
+        }
+    </script>
+</body>
+</html>

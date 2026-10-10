@@ -1,0 +1,265 @@
+<%- include('partials/header') %>
+
+<div class="page-title">
+    <h1><i class="fa-solid fa-file-invoice"></i> Sales Orders</h1>
+    <div class="quick-actions">
+        <button class="btn btn-primary"
+            onclick="document.getElementById('createSOSection').scrollIntoView({behavior:'smooth'})">
+            <i class="fa-solid fa-plus"></i> New Custom/Pre-Order
+        </button>
+    </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="stats-grid">
+    <div class="stat-card stat-primary">
+        <div class="stat-icon"><i class="fa-solid fa-file-invoice"></i></div>
+        <div class="stat-info"><h3>Total Orders</h3><div class="value"><%= stats.totalOrders %></div></div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-icon"><i class="fa-solid fa-clock"></i></div>
+        <div class="stat-info"><h3>Pending</h3><div class="value"><%= stats.pendingOrders %></div></div>
+    </div>
+    <div class="stat-card stat-success">
+        <div class="stat-icon"><i class="fa-solid fa-sack-dollar"></i></div>
+        <div class="stat-info"><h3>Total Value</h3><div class="value"><%= stats.totalAmount.toLocaleString('en', {minimumFractionDigits:2}) %> EGP</div></div>
+    </div>
+    <div class="stat-card stat-danger">
+        <div class="stat-icon"><i class="fa-solid fa-exclamation-triangle"></i></div>
+        <div class="stat-info"><h3>Unpaid</h3><div class="value"><%= stats.unpaidCount %></div></div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="/sales-orders" class="form-inline-grid">
+            <select name="status" onchange="this.form.submit()">
+                <option value="">All Status</option>
+                <option value="Pending" <%= filters.status === 'Pending' ? 'selected' : '' %>>Pending</option>
+                <option value="Confirmed" <%= filters.status === 'Confirmed' ? 'selected' : '' %>>Confirmed</option>
+                <option value="Ready" <%= filters.status === 'Ready' ? 'selected' : '' %>>Ready</option>
+                <option value="Delivered" <%= filters.status === 'Delivered' ? 'selected' : '' %>>Delivered</option>
+                <option value="Cancelled" <%= filters.status === 'Cancelled' ? 'selected' : '' %>>Cancelled</option>
+            </select>
+            <select name="payment_status" onchange="this.form.submit()">
+                <option value="">All Payments</option>
+                <option value="Unpaid" <%= filters.payment_status === 'Unpaid' ? 'selected' : '' %>>Unpaid</option>
+                <option value="Paid" <%= filters.payment_status === 'Paid' ? 'selected' : '' %>>Paid</option>
+            </select>
+            <select name="customer_id" onchange="this.form.submit()">
+                <option value="">All Customers</option>
+                <% customers.forEach(c => { %>
+                <option value="<%= c.customer_id %>" <%= filters.customer_id == c.customer_id ? 'selected' : '' %>><%= c.company_name %></option>
+                <% }) %>
+            </select>
+            <% if (filters.status || filters.payment_status || filters.customer_id || filters.cycle_id) { %>
+                <a href="/sales-orders" class="btn btn-secondary"><i class="fa-solid fa-times"></i> Clear</a>
+            <% } %>
+        </form>
+    </div>
+</div>
+
+<!-- Orders Table -->
+<div class="card">
+    <div class="card-header"><h2><i class="fa-solid fa-list"></i> Orders (<%= orders.length %>)</h2></div>
+    <div class="card-body">
+        <% if (orders.length === 0) { %>
+            <div class="empty-state">
+                <i class="fa-solid fa-file-invoice fa-3x"></i>
+                <h2>No Sales Orders</h2>
+                <p>Create your first sales order to start tracking customer bookings.</p>
+            </div>
+        <% } else { %>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Order #</th>
+                        <th>Customer</th>
+                        <th>Cycle</th>
+                        <th>Birds</th>
+                        <th>Weight (kg)</th>
+                        <th>Price/kg</th>
+                        <th>Total</th>
+                        <th>Order Date</th>
+                        <th>Delivery</th>
+                        <th>Status</th>
+                        <th>Payment</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% orders.forEach(o => {
+                        const st = (o.status || '').toLowerCase();
+                        const ps = (o.payment_status || '').toLowerCase();
+                    %>
+                    <tr>
+                        <td><strong><%= o.order_number %></strong></td>
+                        <td>
+                            <%= o.customer_name || o.company_name %>
+                            <% if (o.company_name) { %><br><small class="text-muted"><%= o.company_name %></small><% } %>
+                        </td>
+                        <td>#<%= o.cycle_id %> — <%= o.breed_name %></td>
+                        <td><%= (o.birds_qty || 0).toLocaleString() %></td>
+                        <td><%= o.est_weight_kg ? parseFloat(o.est_weight_kg).toLocaleString() : '—' %></td>
+                        <td><%= parseFloat(o.price_per_kg || 0).toFixed(2) %></td>
+                        <td><strong><%= parseFloat(o.total_amount || 0).toLocaleString('en', {minimumFractionDigits:2}) %> EGP</strong></td>
+                        <td><%= new Date(o.order_date).toLocaleDateString() %></td>
+                        <td><%= o.delivery_date ? new Date(o.delivery_date).toLocaleDateString() : '—' %></td>
+                        <td>
+                            <% if (st === 'pending') { %>
+                                <span class="badge badge-warning pulse-warning">PENDING APPROVAL</span>
+                            <% } else { %>
+                                <span class="badge badge-<%= st === 'delivered' ? 'success' : st === 'confirmed' ? 'primary' : st === 'ready' ? 'accent' : st === 'cancelled' ? 'danger' : 'secondary' %>">
+                                    <%= o.status.toUpperCase() %>
+                                </span>
+                            <% } %>
+                        </td>
+                        <td>
+                            <span class="badge badge-<%= ps === 'paid' ? 'success' : 'danger' %>">
+                                <%= o.payment_status %>
+                            </span>
+                        </td>
+                        <td style="white-space:nowrap">
+                            <% if (st === 'pending') { %>
+                                <form action="/sales-orders/update-status" method="POST" style="display:inline" onsubmit="return confirm('Confirm this order?')">
+                                    <input type="hidden" name="order_id" value="<%= o.order_id %>">
+                                    <input type="hidden" name="new_status" value="Confirmed">
+                                    <button class="btn btn-sm btn-primary" title="Confirm Order"><i class="fa-solid fa-check"></i></button>
+                                </form>
+                            <% } else if (st === 'confirmed') { %>
+                                <form action="/sales-orders/update-status" method="POST" style="display:inline" onsubmit="return confirm('Mark as ready?')">
+                                    <input type="hidden" name="order_id" value="<%= o.order_id %>">
+                                    <input type="hidden" name="new_status" value="Ready">
+                                    <button class="btn btn-sm btn-accent" title="Mark Ready"><i class="fa-solid fa-box"></i></button>
+                                </form>
+                            <% } else if (st === 'ready') { %>
+                                <form action="/sales-orders/fulfill" method="POST" style="display:inline" onsubmit="return confirm('Fulfill this order? This will create a Sale record and deliver the birds.')">
+                                    <input type="hidden" name="order_id" value="<%= o.order_id %>">
+                                    <button class="btn btn-sm btn-primary" title="Fulfill & Deliver"><i class="fa-solid fa-truck"></i></button>
+                                </form>
+                            <% } %>
+
+                            <% if (st !== 'delivered' && st !== 'cancelled') { %>
+                                <form action="/sales-orders/update-status" method="POST" style="display:inline" onsubmit="return confirm('Cancel this order?')">
+                                    <input type="hidden" name="order_id" value="<%= o.order_id %>">
+                                    <input type="hidden" name="new_status" value="Cancelled">
+                                    <button class="btn btn-sm btn-danger" title="Cancel Order"><i class="fa-solid fa-times"></i></button>
+                                </form>
+                            <% } %>
+
+                            <% if (ps !== 'paid' && st !== 'cancelled' && st !== 'pending') { %>
+                                <form action="/sales-orders/update-payment" method="POST" style="display:inline">
+                                    <input type="hidden" name="order_id" value="<%= o.order_id %>">
+                                    <input type="hidden" name="payment_status" value="Paid">
+                                    <button class="btn btn-sm btn-secondary" title="Mark Fully Paid"><i class="fa-solid fa-money-bill-wave"></i></button>
+                                </form>
+                            <% } %>
+
+                            <a href="/customers?search=<%= encodeURIComponent(o.company_name || '') %>" class="btn btn-sm btn-secondary" title="View Customer"><i class="fa-solid fa-user"></i></a>
+
+                            <% if (o.linked_sale_id) { %>
+                                <a href="/sales" class="btn btn-sm btn-secondary" title="View Sale Record"><i class="fa-solid fa-receipt"></i></a>
+                            <% } %>
+                        </td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+        <% } %>
+    </div>
+</div>
+
+<!-- Status Flow Legend -->
+<div class="card mb-4">
+    <div class="card-body" style="text-align:center">
+        <small class="text-muted">Status Flow: </small>
+        <span class="badge badge-secondary">Pending</span>
+        <small class="text-muted"> → </small>
+        <span class="badge badge-primary">Confirmed</span>
+        <small class="text-muted"> → </small>
+        <span class="badge badge-accent">Ready</span>
+        <small class="text-muted"> → </small>
+        <span class="badge badge-success">Delivered (→ Sale)</span>
+    </div>
+</div>
+
+<!-- Create Custom/Pre-Order Form -->
+<div class="card" id="createSOSection">
+    <div class="card-header"><h2><i class="fa-solid fa-plus"></i> Create Custom/Pre-Order</h2></div>
+    <div class="card-body">
+        <form action="/sales-orders" method="POST" id="soForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="so_customer_id">Customer *</label>
+                    <select id="so_customer_id" name="customer_id" required>
+                        <option value="">— Select Customer —</option>
+                        <% customers.forEach(c => { %>
+                        <option value="<%= c.customer_id %>"><%= c.company_name %> (<%= c.trade_name %>) — <%= c.customer_type %></option>
+                        <% }) %>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="so_cycle_id">Cycle (Active) *</label>
+                    <select id="so_cycle_id" name="cycle_id" required>
+                        <option value="">— Select Cycle —</option>
+                        <% cycles.forEach(cy => { %>
+                        <option value="<%= cy.cycle_id %>">#<%= cy.cycle_id %> — <%= cy.breed_name %><%= cy.shed_name ? ' / ' + cy.shed_name : '' %> (started <%= new Date(cy.start_date).toLocaleDateString() %>)</option>
+                        <% }) %>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="so_birds_quantity">Birds Quantity *</label>
+                    <input type="number" id="so_birds_quantity" name="birds_qty" min="1" placeholder="e.g. 500" required oninput="calcSOTotal()">
+                </div>
+                <div class="form-group">
+                    <label for="so_estimated_weight_kg">Estimated Weight (kg)</label>
+                    <input type="number" step="0.01" id="so_estimated_weight_kg" name="est_weight_kg" placeholder="e.g. 1250.00" oninput="calcSOTotal()">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="so_price_per_kg">Price per kg (EGP) *</label>
+                    <input type="number" step="0.01" id="so_price_per_kg" name="price_per_kg" min="0" placeholder="e.g. 75.00" required oninput="calcSOTotal()">
+                </div>
+                <div class="form-group">
+                    <label>Total Amount (auto)</label>
+                    <input type="text" id="so_total_display" readonly style="font-weight:700;color:var(--success)" value="0.00 EGP">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="so_delivery_date">Required Delivery Date</label>
+                    <input type="date" id="so_delivery_date" name="delivery_date" min="<%= new Date().toISOString().split('T')[0] %>">
+                </div>
+                <div class="form-group">
+                    <label for="so_notes">Notes</label>
+                    <input type="text" id="so_notes" name="notes" placeholder="Optional notes...">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-paper-plane"></i> Create Custom/Pre-Order</button>
+        </form>
+    </div>
+</div>
+
+<script>
+function calcSOTotal() {
+    const weight = parseFloat(document.getElementById('so_estimated_weight_kg').value) || 0;
+    const price = parseFloat(document.getElementById('so_price_per_kg').value) || 0;
+    const total = weight * price;
+    document.getElementById('so_total_display').value = total.toLocaleString('en', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' EGP';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Enable real-time synchronization for sales orders
+    realtimeSync.startSync('salesOrders');
+    // Enable auto-refresh every 50 seconds as fallback
+    setupAutoRefresh(50);
+});
+</script>
+
+<%- include('partials/footer') %>

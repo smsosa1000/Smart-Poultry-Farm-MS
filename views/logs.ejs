@@ -1,0 +1,215 @@
+<%- include('partials/header') %>
+
+<div class="page-title">
+    <h1><i class="fa-solid fa-clipboard-list"></i> Daily Logs</h1>
+</div>
+
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<% if (user && user.user_role === 'Farmer_Worker') { %>
+<div class="card mb-4">
+    <div class="card-header"><h2><i class="fa-solid fa-list-check"></i> My Feed and Vaccine Tasks</h2></div>
+    <div class="card-body">
+        <div class="grid-2">
+            <div>
+                <h3 style="margin-top:0">Feed / Daily Log Cycles</h3>
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead><tr><th>Cycle</th><th>Breed</th></tr></thead>
+                        <tbody>
+                            <% activeCycles.forEach(c => { %>
+                            <tr><td>#<%= c.cycle_id %></td><td><%= c.breed_name %></td></tr>
+                            <% }) %>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="text-muted" style="margin-top:0.75rem">Use the daily log form below for feed entries on these assigned cycles.</p>
+            </div>
+            <div>
+                <h3 style="margin-top:0">Pending Vaccination Tasks</h3>
+                <% if (vaccinationTasks.length === 0) { %>
+                    <p class="text-muted">No pending vaccine tasks right now.</p>
+                <% } else { %>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead><tr><th>Date</th><th>Cycle</th><th>Vaccine</th><th>Birds</th><th>Status</th></tr></thead>
+                            <tbody>
+                                <% vaccinationTasks.forEach(t => { %>
+                                <tr>
+                                    <td><%= new Date(t.scheduled_date).toLocaleDateString() %></td>
+                                    <td>#<%= t.cycle_id %> - <%= t.breed_name %></td>
+                                    <td><%= t.vaccine_name %> (<%= t.admin_route %>)</td>
+                                    <td><%= t.planned_birds %></td>
+                                    <td><span class="badge badge-<%= t.status === 'overdue' ? 'danger' : 'warning' %>"><%= t.status %></span></td>
+                                </tr>
+                                <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                <% } %>
+                <% if (vaccinationTasks.length > 0) { %>
+                <form action="/logs/vaccination" method="POST" class="form-inline-grid mt-4">
+                    <select name="schedule_id" required>
+                        <% vaccinationTasks.forEach(t => { %>
+                            <option value="<%= t.schedule_id %>">#<%= t.cycle_id %> - <%= t.vaccine_name %> on <%= new Date(t.scheduled_date).toLocaleDateString() %></option>
+                        <% }) %>
+                    </select>
+                    <input type="datetime-local" name="administered_at" value="<%= new Date().toISOString().slice(0, 16) %>" required>
+                    <input type="number" name="birds_vaccinated" min="1" placeholder="Birds vaccinated" required>
+                    <input type="text" name="batch_number" placeholder="Batch number" value="BAT-<%= Math.floor(Math.random() * 1000000).toString().padStart(6, '0') %>" readonly>
+                    <input type="number" step="0.01" name="cost" placeholder="Cost (EGP)">
+                    <textarea name="notes" rows="2" placeholder="Vaccination notes"></textarea>
+                    <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-syringe"></i> Mark Vaccination Complete</button>
+                </form>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+<% } %>
+
+<div class="split-layout">
+    <div class="card flex-1">
+        <div class="card-header"><h2><i class="fa-solid fa-plus"></i> Record Daily Log</h2></div>
+        <div class="card-body">
+            <form action="/logs" method="POST">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="cycle_id">Cycle</label>
+                        <select id="cycle_id" name="cycle_id" required>
+                            <% activeCycles.forEach(c => { %>
+                                <option value="<%= c.cycle_id %>">#<%= c.cycle_id %> - <%= c.breed_name %></option>
+                            <% }) %>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="log_date">Date</label>
+                        <input type="date" id="log_date" name="log_date" value="<%= new Date().toISOString().split('T')[0] %>" min="<%= new Date().toISOString().split('T')[0] %>" required>
+                    </div>
+                </div>
+
+                <div class="form-section-title">Environmental Readings</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="temp_celsius">Temp (°C)</label>
+                        <input type="number" step="0.1" id="temp_celsius" name="temp_celsius" placeholder="e.g. 32.5">
+                    </div>
+                    <div class="form-group">
+                        <label for="humidity">Humidity (%)</label>
+                        <input type="number" step="0.1" id="humidity" name="humidity" placeholder="e.g. 65">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="ammonia_level">Ammonia (ppm)</label>
+                        <input type="number" step="0.1" id="ammonia_level" name="ammonia_level" placeholder="e.g. 15">
+                    </div>
+                    <div class="form-group">
+                        <label for="water_consumption">Water (L)</label>
+                        <input type="number" step="0.1" id="water_consumption" name="water_consumption" placeholder="e.g. 500">
+                    </div>
+                </div>
+
+                <div class="form-section-title" id="feed">Feed Data</div>
+                <div class="form-group">
+                    <label for="feed_type_id">Feed Type</label>
+                    <select id="feed_type_id" name="feed_type_id">
+                        <option value="">— Select feed type —</option>
+                        <% if (typeof feedTypes !== 'undefined') { feedTypes.forEach(f => { %>
+                            <option value="<%= f.feed_type_id %>"><%= f.name %></option>
+                        <% }) } %>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="feed_qty">Feed Qty (kg)</label>
+                        <input type="number" step="0.1" id="feed_qty" name="feed_qty">
+                    </div>
+                    <div class="form-group">
+                        <label for="feed_price">Feed Price/kg (EGP)</label>
+                        <input type="number" step="0.01" id="feed_price" name="feed_price" value="0.50">
+                    </div>
+                </div>
+
+                <div class="form-section-title" id="mortality">Mortality</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="mortality_count">Dead Count</label>
+                        <input type="number" id="mortality_count" name="mortality_count" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="mortality_cause">Cause</label>
+                        <select id="mortality_cause" name="mortality_cause">
+                            <option value="Natural">Natural</option>
+                            <option value="Heat Stress">Heat Stress</option>
+                            <option value="Disease">Disease</option>
+                            <option value="Suffocation">Suffocation</option>
+                            <option value="Injury">Injury</option>
+                            <option value="Unknown">Unknown</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="notes">Notes</label>
+                    <textarea id="notes" name="notes" rows="2" placeholder="Any observations..."></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-save"></i> Save Log</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card flex-2">
+        <div class="card-header"><h2><i class="fa-solid fa-history"></i> Recent Logs</h2></div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead><tr><th>Date</th><th>Recorded By</th><th>Cycle</th><th>Temp</th><th>Humidity</th><th>NH₃</th><th>Feed Type</th><th>Feed Qty</th><th>Deaths</th><th>Risk</th></tr></thead>
+                    <tbody>
+                        <% logs.forEach(l => { %>
+                        <tr class="<%= l.risk_level !== 'normal' ? 'row-' + l.risk_level : '' %>">
+                            <td><%= new Date(l.log_date).toLocaleDateString() %></td>
+                            <td>
+                                <% if (l.FName) { %>
+                                    <%= l.FName %> <%= l.LName %><br>
+                                    <small class="text-muted"><%= new Date(l.created_at || l.log_date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) %></small>
+                                <% } else { %>
+                                    —
+                                <% } %>
+                            </td>
+                            <td>#<%= l.cycle_id %></td>
+                            <td><%= l.temp_celsius || '—' %>°C</td>
+                            <td><%= l.humidity || '—' %>%</td>
+                            <td><%= l.ammonia_level || '—' %></td>
+                            <td><%- l.feed_type_name || '<span class="text-muted">—</span>' %></td>
+                            <td><%= l.feed_quantity || '—' %> kg</td>
+                            <td class="<%= l.dead_count > 5 ? 'text-danger' : '' %>"><%= l.dead_count || 0 %></td>
+                            <td>
+                                <% if (l.risk_level === 'danger') { %>
+                                    <span class="badge badge-danger">🔴 High</span>
+                                <% } else if (l.risk_level === 'warning') { %>
+                                    <span class="badge badge-warning">🟡 Warn</span>
+                                <% } else { %>
+                                    <span class="badge badge-success">🟢 OK</span>
+                                <% } %>
+                            </td>
+                        </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Enable real-time synchronization for daily logs and vaccination records
+document.addEventListener('DOMContentLoaded', () => {
+    realtimeSync.startSync('logs');
+    // Enable auto-refresh every 50 seconds as fallback
+    setupAutoRefresh(50);
+});
+</script>
+
+<%- include('partials/footer') %>

@@ -1,0 +1,227 @@
+<%- include('partials/header') %>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="page-title">
+    <div>
+        <h1><i class="fa-solid fa-chart-pie"></i> Dashboard</h1>
+        <p class="text-muted">Welcome back, <%= user.full_name || user.username %></p>
+    </div>
+    <div class="quick-actions" style="display: flex; gap: 1rem; align-items: center;">
+        <% if ((user.user_role === 'Manager' || user.is_admin) && allCycles && allCycles.length > 0) { %>
+            <div class="form-group mb-0">
+                <select id="cycleSelector" onchange="window.location.href='/dashboard?cycleId=' + this.value" 
+                    style="padding: 0.5rem; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-input); color: var(--text-main); font-weight: 500; cursor: pointer; outline: none; width: auto;">
+                    <% allCycles.forEach(c => { %>
+                        <option value="<%= c.cycle_id %>" <%= selectedCycleId == c.cycle_id ? 'selected' : '' %>>
+                            Cycle #<%= c.cycle_id %> (<%= c.breed_name %>) - <%= c.cycle_status.toUpperCase() %>
+                        </option>
+                    <% }) %>
+                </select>
+            </div>
+        <% } %>
+        <a href="/logs" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Add Log</a>
+        <a href="/ai-assistant" class="btn btn-accent"><i class="fa-solid fa-robot"></i> Ask AI</a>
+    </div>
+</div>
+
+<!-- Risk Alerts -->
+<% if (typeof alerts !== 'undefined' && alerts.length > 0) { %>
+    <div class="alerts-banner mb-4">
+        <div class="alerts-header">
+            <h3><i class="fa-solid fa-triangle-exclamation"></i> System Notifications</h3>
+        </div>
+        <div class="alerts-list">
+            <% alerts.forEach(a => { %>
+                <div class="alert-mini alert-mini-<%= a.type %>">
+                    <i class="fa-solid <%= a.icon %>"></i> <span><%= a.message %></span>
+                </div>
+            <% }) %>
+        </div>
+    </div>
+<% } %>
+
+<% if (stats) { %>
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+        <div class="stat-card stat-primary">
+            <div class="stat-icon"><i class="fa-solid fa-egg"></i></div>
+            <div class="stat-info">
+                <h3>Living Birds</h3>
+                <div class="value"><%= stats.living_birds.toLocaleString() %></div>
+                <small>Cycle #<%= stats.cycle_id %> &bull; <%= stats.breed_name %> &bull; <%= stats.shed_name || 'No Shed' %></small>
+            </div>
+        </div>
+        <div class="stat-card stat-danger">
+            <div class="stat-icon"><i class="fa-solid fa-skull-crossbones"></i></div>
+            <div class="stat-info">
+                <h3>Mortality</h3>
+                <div class="value"><%= stats.total_mortality %></div>
+                <small>Rate: <%= stats.mortality_rate %>%</small>
+            </div>
+        </div>
+        <div class="stat-card stat-warning">
+            <div class="stat-icon"><i class="fa-solid fa-wheat-awn"></i></div>
+            <div class="stat-info">
+                <h3>Total Feed</h3>
+                <div class="value"><%= parseFloat(stats.total_feed).toLocaleString() %> kg</div>
+                <small>Day <%= stats.days_active %> of cycle</small>
+            </div>
+        </div>
+        <% if (user.user_role === 'Manager' || user.is_admin) { %>
+        <div class="stat-card stat-success">
+            <div class="stat-icon"><i class="fa-solid fa-sack-dollar"></i></div>
+            <div class="stat-info">
+                <h3>Net Profit</h3>
+                <div class="value"><%= parseFloat(stats.net_profit || 0).toFixed(2).toLocaleString() %> EGP</div>
+                <small><%= stats.net_profit >= 0 ? '📈 Profitable' : '📉 Loss' %></small>
+            </div>
+        </div>
+        <% } %>
+    </div>
+
+    <!-- Performance Chart Row -->
+    <div class="card mb-4">
+        <div class="card-header"><h2><i class="fa-solid fa-chart-line"></i> Flock Performance Trend</h2></div>
+        <div class="card-body">
+            <canvas id="performanceChart" style="max-height: 400px; width: 100%;"></canvas>
+        </div>
+    </div>
+
+    <!-- Quick Overview Cards -->
+    <div class="grid-2">
+        <% if (user.user_role === 'Manager' || user.is_admin) { %>
+        <div class="card">
+            <div class="card-header"><h2><i class="fa-solid fa-circle-info"></i> System Overview</h2></div>
+            <div class="card-body">
+                <div class="info-grid">
+                    <div class="info-item"><span class="info-label">Total Cycles</span><span class="info-value"><%= totalCycles %></span></div>
+                    <div class="info-item"><span class="info-label">Total Workers</span><span class="info-value"><%= totalWorkers %></span></div>
+                    <div class="info-item"><span class="info-label">Active Cycle Days</span><span class="info-value"><%= stats.days_active %></span></div>
+                    <div class="info-item"><span class="info-label">Your Role</span><span class="info-value"><%= user.is_admin ? 'Administrator' : user.user_role %></span></div>
+                </div>
+            </div>
+        </div>
+        <% } %>
+
+        <div class="card">
+            <div class="card-header"><h2><i class="fa-solid fa-arrows-spin"></i> Active Cycles</h2></div>
+            <div class="card-body">
+                <% if (cycles && cycles.length > 0) { %>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead><tr><th>ID</th><th>Breed</th><th>Chicks</th><th>Started</th></tr></thead>
+                            <tbody>
+                                <% cycles.forEach(c => { %>
+                                <tr>
+                                    <td><span class="badge badge-primary">#<%= c.cycle_id %></span></td>
+                                    <td><%= c.breed_name %></td>
+                                    <td><%= c.initial_chicks.toLocaleString() %></td>
+                                    <td><%= new Date(c.start_date).toLocaleDateString() %></td>
+                                </tr>
+                                <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                <% } else { %>
+                    <p class="text-muted">No active cycles.</p>
+                <% } %>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header"><h2><i class="fa-solid fa-clock-rotate-left"></i> Recent Activity</h2></div>
+            <div class="card-body">
+                <% if (typeof recentActivity !== 'undefined' && recentActivity.length > 0) { %>
+                    <div class="activity-timeline">
+                        <% recentActivity.forEach(act => { %>
+                            <div class="activity-item" style="display: flex; gap: 1rem; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-subtle);">
+                                <div class="activity-time" style="font-size: 0.8rem; color: var(--text-muted); width: 80px;">
+                                    <%= new Date(act.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) %>
+                                </div>
+                                <div class="activity-content">
+                                    <strong><%= act.FName %> <%= act.LName %></strong> 
+                                    <span class="badge badge-sm badge-secondary"><%= act.action %></span>
+                                    <p style="margin: 0.2rem 0; font-size: 0.9rem;"><%= act.details %></p>
+                                </div>
+                            </div>
+                        <% }) %>
+                    </div>
+                <% } else { %>
+                    <p class="text-muted">No recent activity.</p>
+                <% } %>
+            </div>
+        </div>
+    </div>
+<% } else { %>
+    <div class="empty-state">
+        <i class="fa-solid fa-egg fa-3x"></i>
+        <h2>No Active Cycles</h2>
+        <p>Start a new cycle to begin tracking your farm operations.</p>
+        <% if (user.user_role === 'Manager' || user.is_admin) { %>
+            <a href="/cycles/new" class="btn btn-primary btn-lg"><i class="fa-solid fa-plus"></i> Start New Cycle</a>
+        <% } %>
+    </div>
+<% } %>
+
+<script id="chart-data" type="application/json">
+<%- JSON.stringify(locals.chartData || { labels: [], mortality: [], temps: [] }) %>
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const canvas = document.getElementById('performanceChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    let chartData = { labels: [], mortality: [], temps: [] };
+    const chartDataEl = document.getElementById('chart-data');
+    if (chartDataEl && chartDataEl.textContent) {
+        try {
+            chartData = JSON.parse(chartDataEl.textContent);
+        } catch (e) {
+            console.error("Error parsing chart data", e);
+        }
+    }
+    
+    if (!chartData.labels || chartData.labels.length === 0) return;
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: chartData.labels,
+            datasets: [
+                {
+                    label: 'Mortality (Birds)',
+                    data: chartData.mortality,
+                    borderColor: '#ff4d4d',
+                    backgroundColor: 'rgba(255, 77, 77, 0.1)',
+                    tension: 0.3,
+                    fill: true,
+                    yAxisID: 'y',
+                },
+                {
+                    label: 'Temperature (°C)',
+                    data: chartData.temps,
+                    borderColor: '#ffaa00',
+                    backgroundColor: 'transparent',
+                    borderDash: [5, 5],
+                    tension: 0.3,
+                    yAxisID: 'y1',
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Mortality' }, beginAtZero: true },
+                y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Temp (°C)' }, grid: { drawOnChartArea: false } }
+            },
+            plugins: {
+                legend: { position: 'top' }
+            }
+        }
+    });
+});
+</script>
+
+<%- include('partials/footer') %>

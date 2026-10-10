@@ -1,0 +1,27 @@
+<%- include('partials/header') %>
+<div class="page-title"><h1><i class="fa-solid fa-shield-halved"></i> System Audit Logs</h1></div>
+
+<div class="card">
+    <div class="card-header"><h2><i class="fa-solid fa-clock-rotate-left"></i> Recent Activity</h2></div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="data-table"><thead><tr><th>Timestamp</th><th>User</th><th>Action</th><th>Entity</th><th>Details</th><th>IP Address</th></tr></thead>
+            <tbody><% (locals.logs || []).forEach(l => { %><tr>
+                <td><%= new Date(l.created_at).toLocaleString() %></td>
+                <td><%= l.FName ? `${l.FName} ${l.LName}` : 'System' %></td>
+                <td><span class="badge badge-<%= l.action === 'delete' ? 'danger' : l.action === 'create' ? 'success' : 'primary' %>"><%= l.action.toUpperCase() %></span></td>
+                <td><strong><%= l.entity_type %></strong> <span class="text-muted">#<%= l.entity_id %></span></td>
+                <td>
+                    <div style="font-size:0.8rem; max-width:400px; overflow:hidden; text-overflow:ellipsis">
+                        <% if (l.new_values) { %>
+                            <strong>New:</strong> <%= JSON.stringify(l.new_values) %>
+                        <% } %>
+                    </div>
+                </td>
+                <td><code><%= l.ip_address || '—' %></code></td>
+            </tr><% }) %></tbody></table>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer') %>

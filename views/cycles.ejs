@@ -1,0 +1,151 @@
+<%- include('partials/header') %>
+
+<div class="page-title">
+    <h1><i class="fa-solid fa-arrows-spin"></i> Farm Cycles</h1>
+</div>
+
+<% if (error) { %>
+    <div class="alert alert-error"><%= error %></div>
+<% } %>
+
+<% if (mode === 'create') { %>
+<div class="card">
+    <div class="card-header"><h2><i class="fa-solid fa-circle-plus"></i> Start New Cycle</h2></div>
+    <div class="card-body">
+        <% if (activeCycleId) { %>
+            <div class="alert alert-warning">Cycle #<%= activeCycleId %> is still active. Close it first.</div>
+        <% } %>
+        <form action="/cycles" method="POST">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="breed_id">Breed</label>
+                    <select id="breed_id" name="breed_id" required>
+                        <% (locals.breeds || []).forEach(b => { %>
+                            <option value="<%= b.breed_id %>"><%= b.breed_name %></option>
+                        <% }) %>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="shed_id">Shed / Location</label>
+                    <select id="shed_id" name="shed_id" required>
+                        <% (locals.sheds || []).forEach(s => { %>
+                            <option value="<%= s.shed_id %>"><%= s.shed_name %> (Cap: <%= s.capacity %>)</option>
+                        <% }) %>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="initial_chicks">Initial Chicks</label>
+                    <input type="number" id="initial_chicks" name="initial_chicks" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="chick_price_per_unit">Price/Chick (EGP)</label>
+                    <input type="number" step="0.01" id="chick_price_per_unit" name="chick_price_per_unit" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="start_date">Start Date</label>
+                    <input type="date" id="start_date" name="start_date" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-play"></i> Start Cycle</button>
+        </form>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const shedSelect = document.getElementById('shed_id');
+    const chicksInput = document.getElementById('initial_chicks');
+    const dateInput = document.getElementById('start_date');
+
+    if (dateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.setAttribute('min', today);
+        dateInput.value = today;
+    }
+
+    function updateCapacity() {
+        if (!shedSelect) return;
+        const selectedOption = shedSelect.options[shedSelect.selectedIndex];
+        if (selectedOption) {
+            const text = selectedOption.text;
+            const match = text.match(/Cap:\s*(\d+)/);
+            if (match) {
+                chicksInput.max = match[1];
+                chicksInput.placeholder = 'Max: ' + match[1];
+            }
+        }
+    }
+    
+    if (shedSelect) {
+        shedSelect.addEventListener('change', updateCapacity);
+        updateCapacity();
+    }
+});
+</script>
+<% } %>
+
+<div class="card">
+    <div class="card-header"><h2><i class="fa-solid fa-list"></i> All Cycles</h2></div>
+    <div class="card-body">
+        <% if (cycles.length > 0) { %>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead><tr><th>ID</th><th>Breed</th><th>Shed</th><th>Chicks</th><th>Price/Unit</th><th>Start</th><th>End</th><th>Status</th><th>Actions</th></tr></thead>
+                <tbody>
+                    <% cycles.forEach(c => { %>
+                    <tr>
+                        <td><span class="badge badge-primary">#<%= c.cycle_id %></span><br><small class="text-muted"><%= c.assigned_workers || 'Unassigned' %></small></td>
+                        <td><%= c.breed_name %></td>
+                        <td><%= c.shed_name || '—' %></td>
+                        <td><%= c.initial_chicks.toLocaleString() %></td>
+                        <td><%= c.chick_price_per_unit %> EGP</td>
+                        <td><%= new Date(c.start_date).toLocaleDateString() %></td>
+                        <td><%= c.end_date ? new Date(c.end_date).toLocaleDateString() : '—' %></td>
+                        <td>
+                            <span class="badge <%= c.cycle_status === 'active' ? 'badge-success' : 'badge-secondary' %>">
+                                <%= c.cycle_status %>
+                            </span>
+                        </td>
+                        <td>
+                            <% if (c.cycle_status === 'active' && (user.user_role === 'Manager' || user.is_admin)) { %>
+                                <div style="display:flex; gap:0.5rem; align-items:center;">
+                                    <form action="/cycles/assign-worker" method="POST" style="display:inline">
+                                        <input type="hidden" name="cycle_id" value="<%= c.cycle_id %>">
+                                        <select name="person_id" onchange="this.form.submit()" style="padding: 2px 4px; font-size: 0.75rem;">
+                                            <option value="">Assign Worker...</option>
+                                            <% if (typeof farmerWorkers !== 'undefined') { farmerWorkers.forEach(w => { %>
+                                                <option value="<%= w.person_id %>"><%= w.FName %> <%= w.LName %></option>
+                                            <% }) } %>
+                                        </select>
+                                    </form>
+                                    <form action="/cycles/<%= c.cycle_id %>/close" method="POST" style="display:inline" onsubmit="return confirm('Close this cycle?')">
+                                        <input type="hidden" name="end_date" value="<%= new Date().toISOString().split('T')[0] %>">
+                                        <button type="submit" class="btn btn-sm btn-danger" title="Close Cycle"><i class="fa-solid fa-stop"></i></button>
+                                    </form>
+                                </div>
+                            <% } %>
+                        </td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+        <% } else { %>
+            <p class="text-muted">No cycles found.</p>
+        <% } %>
+    </div>
+</div>
+
+<%- include('partials/footer') %>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Use realtimeSync library for cycles
+    realtimeSync.startSync('cycles');
+    // Enable auto-page refresh every 50 seconds as fallback
+    setupAutoRefresh(50);
+});
+</script>

@@ -1,0 +1,278 @@
+<%- include('partials/header') %>
+<div class="page-title"><h1><i class="fa-solid fa-stethoscope"></i> Operations & Health</h1></div>
+
+<% if (user.user_role === 'Farmer_Worker' || user.user_role === 'Manager' || user.is_admin) { %>
+<!-- Vaccination Schedule -->
+<div class="card mb-4" id="vaccinations">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <h2><i class="fa-solid fa-syringe"></i> Vaccination Schedule</h2>
+        <% if (user.user_role === 'Manager' || user.is_admin) { %>
+        <button class="btn btn-sm btn-primary" onclick="document.getElementById('add-vac-form').style.display='flex'">+ New Schedule</button>
+        <% } %>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="data-table"><thead><tr><th>Date</th><th>Cycle</th><th>Vaccine</th><th>Planned Birds</th><th>Assigned To</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody><% (typeof vacSchedules !== 'undefined' ? vacSchedules : []).forEach(v => { %><tr>
+                <td><%= new Date(v.scheduled_date).toLocaleDateString() %></td><td>#<%= v.cycle_id %></td>
+                <td><%= v.vaccine_name %></td><td><%= v.planned_birds %></td>
+                <td>
+                    <% if (v.assigned_fname) { %>
+                        <%= v.assigned_fname %> <%= v.assigned_lname %>
+                    <% } else { %>
+                        <span class="text-muted">Unassigned</span>
+                    <% } %>
+                    <% if ((user.user_role === 'Manager' || user.is_admin) && v.status !== 'Completed' && v.status !== 'Failed') { %>
+                    <form action="/operations/assign-vaccine" method="POST" style="display:inline-block; margin-left:10px;">
+                        <input type="hidden" name="schedule_id" value="<%= v.schedule_id %>">
+                        <select name="assigned_worker_id" onchange="this.form.submit()" style="padding: 2px 4px; font-size: 0.75rem; width: auto;">
+                            <option value="">Assign...</option>
+                            <% farmerWorkers.forEach(w => { %>
+                                <option value="<%= w.person_id %>"><%= w.FName %> <%= w.LName %> (<%= w.username || 'No Acc' %>)</option>
+                            <% }) %>
+                        </select>
+                    </form>
+                    <% } %>
+                </td>
+                <td><span class="badge badge-<%= v.status === 'Completed' ? 'success' : v.status === 'Failed' ? 'danger' : v.status === 'Overdue' ? 'danger' : 'warning' %>"><%= v.status %></span></td>
+                <td style="white-space:nowrap">
+                    <% if (user.user_role === 'Manager' || user.is_admin) { %>
+                    <form action="/operations/vaccination-schedule/delete" method="POST" style="display:inline" onsubmit="return confirm('Delete this schedule?')">
+                        <input type="hidden" name="schedule_id" value="<%= v.schedule_id %>">
+                        <button class="btn btn-sm btn-danger" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                    </form>
+                    <% } %>
+                </td>
+            </tr><% }) %></tbody></table>
+        </div>
+        <% if (user.user_role === 'Manager' || user.is_admin) { %>
+        <form action="/operations/vaccination-schedule" method="POST" class="form-inline-grid mb-4" id="add-vac-form" style="display:none; padding:1rem; border:1px dashed var(--primary); border-radius:8px;">
+            <select name="cycle_id" required><option value="">— Cycle —</option><% cycles.forEach(c => { %><option value="<%= c.cycle_id %>">#<%= c.cycle_id %> — <%= c.breed_name %></option><% }) %></select>
+            <select name="vaccine_id" required><option value="">— Vaccine —</option><% (typeof vaccines !== 'undefined' ? vaccines : []).forEach(v => { %><option value="<%= v.vaccine_id %>"><%= v.vaccine_name %></option><% }) %></select>
+            <input type="date" name="scheduled_date" required min="<%= new Date().toISOString().split('T')[0] %>">
+            <input type="number" name="planned_birds" placeholder="Planned Birds" min="1" required>
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Schedule</button>
+            <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-vac-form').style.display='none'">Cancel</button>
+        </form>
+        <% } %>
+    </div>
+</div>
+<% } %>
+
+<% if (user.user_role === 'Farmer_Worker' || user.user_role === 'Manager' || user.is_admin) { %>
+<!-- Treatments -->
+<div class="card mb-4" id="treatments">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <h2><i class="fa-solid fa-pills"></i> Treatments</h2>
+        <% if (user.user_role === 'Manager' || user.is_admin) { %>
+            <div>
+                <button class="btn btn-sm btn-secondary" onclick="document.getElementById('manageMedicinesModal').style.display='flex'">Manage Medicines</button>
+                <button class="btn btn-sm btn-secondary" onclick="document.getElementById('add-medicine-form').style.display='flex'">+ New Medicine</button>
+            </div>
+        <% } %>
+    </div>
+    <div class="card-body">
+        <% if (user.user_role === 'Manager' || user.is_admin) { %>
+        <form action="/operations/medicine" method="POST" class="form-inline-grid mb-4" id="add-medicine-form" style="display: none; padding: 1rem; border: 1px dashed var(--primary); border-radius: 8px;">
+            <input type="text" name="medicine_name" placeholder="Medicine Name" required>
+            <input type="text" name="unit" placeholder="Unit (e.g. ml, mg)" required>
+            <input type="number" step="0.01" name="price_per_unit" placeholder="Price per unit" required>
+            <input type="text" name="purpose" placeholder="Purpose" required>
+            <button type="submit" class="btn btn-accent"><i class="fa-solid fa-check"></i> Save Medicine</button>
+            <button type="button" class="btn btn-secondary" onclick="document.getElementById('add-medicine-form').style.display='none'">Cancel</button>
+        </form>
+        <% } %>
+        
+        <% if (user.user_role === 'Manager' || user.is_admin) { %>
+        <form action="/operations/treatment" method="POST" class="form-inline-grid mb-4">
+            <select name="cycle_id" required><% cycles.forEach(c => { %><option value="<%= c.cycle_id %>">#<%= c.cycle_id %></option><% }) %></select>
+            <select name="medicine_id" required><% medicines.forEach(m => { %><option value="<%= m.medicine_id %>"><%= m.medicine_name %> (<%= m.unit %>)</option><% }) %></select>
+            <select name="treatment_type" required>
+                <option value="Curative">Curative</option>
+                <option value="Preventative">Preventative</option>
+                <option value="Growth_Boost">Growth Boost</option>
+            </select>
+            <select name="administered_by" required>
+                <option value="">Select Worker...</option>
+                <% farmerWorkers.forEach(w => { %>
+                    <option value="<%= w.person_id %>"><%= w.FName %> <%= w.LName %> (<%= w.username || 'No Acc' %>)</option>
+                <% }) %>
+            </select>
+            <input type="date" name="treatment_date" value="<%= new Date().toISOString().split('T')[0] %>" required>
+            <input type="number" step="0.1" name="quantity_used" placeholder="Qty" required>
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Add</button>
+        </form>
+        <% } %>
+        <div class="table-responsive">
+            <table class="data-table"><thead><tr><th>Date</th><th>Cycle</th><th>Medicine</th><th>Qty</th><th>Administered By</th><th>Total</th></tr></thead>
+            <tbody><% (typeof treatments !== 'undefined' ? treatments : []).forEach(t => { %><tr>
+                <td><%= new Date(t.treatment_date).toLocaleDateString() %></td><td>#<%= t.cycle_id %></td>
+                <td><%= t.medicine_name %></td><td><%= t.quantity_used %> <%= t.unit %></td>
+                <td><%= t.administered_by_fname %> <%= t.administered_by_lname %></td><td class="text-danger"><%= parseFloat(t.total_cost || 0).toFixed(2) %> EGP</td>
+            </tr><% }) %></tbody></table>
+        </div>
+
+        <!-- Manage Medicines Modal -->
+        <% if (user.user_role === 'Manager' || user.is_admin) { %>
+        <div id="manageMedicinesModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1000; align-items:center; justify-content:center;">
+            <div style="background:var(--card-bg, #1e293b); padding:2rem; border-radius:12px; max-width:600px; width:90%; max-height:80vh; overflow-y:auto;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                    <h3 style="margin:0"><i class="fa-solid fa-pills"></i> Manage Medicines</h3>
+                    <button class="btn btn-sm btn-secondary" onclick="document.getElementById('manageMedicinesModal').style.display='none'"><i class="fa-solid fa-times"></i></button>
+                </div>
+                <table class="data-table">
+                    <thead><tr><th>Name</th><th>Unit</th><th>Price/Unit</th><th>Purpose</th><th>Actions</th></tr></thead>
+                    <tbody>
+                        <% (typeof medicines !== 'undefined' ? medicines : []).forEach(m => { %>
+                        <tr>
+                            <td><%= m.medicine_name %></td>
+                            <td><%= m.unit %></td>
+                            <td><%= parseFloat(m.price_per_unit).toFixed(2) %></td>
+                            <td><%= m.purpose %></td>
+                            <td>
+                                <form action="/operations/medicine/delete" method="POST" onsubmit="return confirm('Delete this medicine?')">
+                                    <input type="hidden" name="medicine_id" value="<%= m.medicine_id %>">
+                                    <button class="btn btn-sm btn-danger" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                                </form>
+                            </td>
+                        </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <% } %>
+    </div>
+</div>
+<% } %>
+
+<% if (user.user_role === 'Manager' || user.is_admin) { %>
+<!-- Sheds -->
+<div class="card mb-4" id="sheds">
+    <div class="card-header"><h2><i class="fa-solid fa-house-chimney"></i> Sheds</h2></div>
+    <div class="card-body">
+        <form action="/operations/shed" method="POST" class="form-inline-grid mb-4">
+            <input type="text" name="shed_name" placeholder="Shed Name" required>
+            <input type="number" name="capacity" placeholder="Capacity (birds)" min="1" required>
+            <input type="number" step="0.1" name="area_sqm" placeholder="Area (sqm)" required>
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Add Shed</button>
+        </form>
+        <div class="table-responsive">
+            <table class="data-table"><thead><tr><th>Shed Name</th><th>Capacity</th><th>Area</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody><% (typeof sheds !== 'undefined' ? sheds : []).forEach(s => { %><tr>
+                <td><%= s.shed_name %></td>
+                <td><%= s.capacity %></td>
+                <td><%= s.area_sqm %> sqm</td>
+                <td><span class="badge badge-<%= s.status === 'Active' ? 'success' : s.status === 'Cleaning' ? 'warning' : 'secondary' %>"><%= s.status %></span></td>
+                <td style="white-space:nowrap">
+                    <button class="btn btn-sm btn-secondary" onclick="openShedEdit(<%= s.shed_id %>, '<%= s.shed_name %>', <%= s.capacity %>, <%= s.area_sqm %>, '<%= s.status %>')" title="Edit"><i class="fa-solid fa-edit"></i></button>
+                    <form action="/operations/shed/delete" method="POST" style="display:inline" onsubmit="return confirm('Delete this shed? Only possible if no active cycle is using it.')">
+                        <input type="hidden" name="shed_id" value="<%= s.shed_id %>">
+                        <button type="submit" class="btn btn-sm btn-danger" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                    </form>
+                </td>
+            </tr><% }) %></tbody></table>
+        </div>
+
+        <!-- Shed Edit Modal -->
+        <div id="shedEditModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:1000; display:none; align-items:center; justify-content:center;">
+            <div style="background:var(--card-bg, #1e293b); padding:2rem; border-radius:12px; max-width:500px; width:90%;">
+                <h3 style="margin-top:0"><i class="fa-solid fa-edit"></i> Edit Shed</h3>
+                <form action="/operations/shed/edit" method="POST">
+                    <input type="hidden" name="shed_id" id="edit_shed_id">
+                    <div class="form-group"><label>Shed Name</label><input type="text" name="shed_name" id="edit_shed_name" required></div>
+                    <div class="form-row">
+                        <div class="form-group"><label>Capacity</label><input type="number" name="capacity" id="edit_shed_capacity" min="1" required></div>
+                        <div class="form-group"><label>Area (sqm)</label><input type="number" step="0.1" name="area_sqm" id="edit_shed_area" required></div>
+                    </div>
+                    <div class="form-group"><label>Status</label>
+                        <select name="status" id="edit_shed_status">
+                            <option value="Active">Active</option>
+                            <option value="Not_Ready">Not Ready</option>
+                            <option value="Cleaning">Cleaning</option>
+                            <option value="Maintenance">Maintenance</option>
+                        </select>
+                    </div>
+                    <div style="display:flex;gap:0.5rem;margin-top:1rem;">
+                        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-save"></i> Save</button>
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('shedEditModal').style.display='none'">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<% } %>
+
+<% if (user.user_role === 'Technician' || user.user_role === 'Manager' || user.is_admin) { %>
+<!-- Devices -->
+<div class="card mb-4" id="devices">
+    <div class="card-header"><h2><i class="fa-solid fa-microchip"></i> Registered Devices</h2></div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="data-table"><thead><tr><th>Name</th><th>Type</th><th>Fuel</th><th>Shed</th><th>Status</th></tr></thead>
+            <tbody><% (typeof devices !== 'undefined' ? devices : []).forEach(d => { %><tr>
+                <td><%= d.device_name %></td>
+                <td><%= d.device_type %></td>
+                <td><%= d.fuel_type %></td>
+                <td>Shed <%= d.shed_id || '—' %></td>
+                <td><span class="badge badge-<%= d.status === 'Active' ? 'success' : 'warning' %>"><%= d.status %></span></td>
+            </tr><% }) %></tbody></table>
+        </div>
+    </div>
+</div>
+<% } %>
+
+<% if (user.user_role === 'Technician' || user.user_role === 'Manager' || user.is_admin) { %>
+<!-- Maintenance -->
+<div class="card mb-4" id="maintenance">
+    <div class="card-header"><h2><i class="fa-solid fa-screwdriver-wrench"></i> Maintenance</h2></div>
+    <div class="card-body">
+        <% if (user.user_role === 'Technician' || user.is_admin) { %>
+        <form action="/operations/maintenance" method="POST" class="form-inline-grid mb-4">
+            <select name="device_id" required><% devices.forEach(d => { %><option value="<%= d.device_id %>"><%= d.device_name %></option><% }) %></select>
+            <select name="technician_id" required>
+                <option value="">Select Technician...</option>
+                <% (typeof technicians !== 'undefined' ? technicians : []).forEach(t => { %>
+                    <option value="<%= t.person_id %>"><%= t.FName %> <%= t.LName %> (<%= t.username || 'No Acc' %>)</option>
+                <% }) %>
+            </select>
+            <input type="datetime-local" name="maintenance_datetime" required>
+            <input type="text" name="description" placeholder="Notes">
+            <select name="status">
+                <option value="Pending">Pending</option>
+                <option value="In_Progress">In Progress</option>
+                <option value="Completed">Completed</option>
+            </select>
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-plus"></i> Add</button>
+        </form>
+        <% } %>
+        <div class="table-responsive">
+            <table class="data-table"><thead><tr><th>Date</th><th>Device</th><th>Technician</th><th>Description</th><th>Status</th></tr></thead>
+            <tbody><% (typeof maintains !== 'undefined' ? maintains : []).forEach(m => { %><tr>
+                <td><%= new Date(m.maintenance_datetime).toLocaleString() %></td><td><%= m.device_name || m.device_type %></td>
+                <td><%= m.FName %> <%= m.LName %></td><td><%= m.description || '—' %></td>
+                <td><span class="badge badge-<%= m.status === 'Completed' ? 'success' : m.status === 'In_Progress' ? 'warning' : 'secondary' %>"><%= m.status %></span></td>
+            </tr><% }) %></tbody></table>
+        </div>
+    </div>
+</div>
+<% } %>
+
+<script>
+function openShedEdit(id, name, cap, area, status) {
+    document.getElementById('edit_shed_id').value = id;
+    document.getElementById('edit_shed_name').value = name;
+    document.getElementById('edit_shed_capacity').value = cap;
+    document.getElementById('edit_shed_area').value = area;
+    document.getElementById('edit_shed_status').value = status;
+    document.getElementById('shedEditModal').style.display = 'flex';
+}
+// Enable real-time synchronization for operations & health data
+document.addEventListener('DOMContentLoaded', () => {
+    realtimeSync.startSync('operations');
+    setupAutoRefresh(50);
+});
+</script>
+
+<%- include('partials/footer') %>

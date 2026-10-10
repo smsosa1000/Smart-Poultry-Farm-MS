@@ -1,0 +1,31 @@
+{
+  "name": "smart-poultry-farm-v2",
+  "version": "2.0.0",
+  "description": "Smart Poultry Farm Management System - Defense Ready",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node scripts/seed_v6.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "poultry",
+    "farm",
+    "management",
+    "database"
+  ],
+  "author": "Samaa Mohamed",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@google/generative-ai": "^0.24.1",
+    "bcryptjs": "^3.0.3",
+    "dotenv": "^17.4.2",
+    "ejs": "^5.0.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.1",
+    "express-session": "^1.19.0",
+    "helmet": "^8.1.0",
+    "mysql2": "^3.22.3"
+  }
+}

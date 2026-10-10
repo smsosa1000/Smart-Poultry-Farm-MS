@@ -1,0 +1,56 @@
+<%- include('partials/header') %>
+<div class="page-title"><h1><i class="fa-solid fa-clipboard-check"></i> Quality Control & Compliance</h1></div>
+
+<% if (user.user_role === 'Manager' || user.user_role === 'Technician' || user.is_admin) { %>
+<div class="card">
+    <div class="card-header"><h2><i class="fa-solid fa-plus-circle"></i> New Inspection</h2></div>
+    <div class="card-body">
+        <form action="/qc" method="POST">
+            <div class="grid-4">
+                <div class="form-group"><label>Cycle</label><select name="cycle_id" required><% (locals.activeCycles || []).forEach(c => { %><option value="<%= c.cycle_id %>">#<%= c.cycle_id %> - <%= c.breed_name %></option><% }) %></select></div>
+                <div class="form-group"><label>Inspector</label><select name="inspector_id" required><% (locals.technicians || []).forEach(t => { %><option value="<%= t.person_id %>"><%= t.FName %> <%= t.LName %></option><% }) %></select></div>
+                <div class="form-group"><label>Inspection Date</label><input type="date" name="inspection_date" value="<%= new Date().toISOString().split('T')[0] %>" max="<%= new Date().toISOString().split('T')[0] %>" required></div>
+                <div class="form-group"><label>Inspection Type</label>
+                    <select name="inspection_type">
+                        <option value="Feed">Feed</option>
+                        <option value="Water">Water</option>
+                        <option value="Bird_Health">Bird Health</option>
+                        <option value="Bio_Security">Bio Security</option>
+                        <option value="Environment">Environment</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group" style="width: 25%;">
+                <label>Compliance Status</label>
+                <select name="compliance_status">
+                    <option value="Pass">Pass</option>
+                    <option value="Fail">Fail</option>
+                    <option value="Warning">Warning</option>
+                </select>
+            </div>
+            <div class="form-group"><label>Test Results</label><textarea name="test_results" rows="2" placeholder="e.g. Ammonia levels OK, Water pH 7.2"></textarea></div>
+            <div class="form-group"><label>Corrective Action (if failed)</label><textarea name="corrective_action" rows="2"></textarea></div>
+            <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-save"></i> Save Inspection</button>
+        </form>
+    </div>
+</div>
+<% } %>
+
+<div class="card">
+    <div class="card-header"><h2><i class="fa-solid fa-history"></i> Inspection History</h2></div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="data-table"><thead><tr><th>Date</th><th>Cycle</th><th>Type</th><th>Inspector</th><th>Status</th><th>Results</th></tr></thead>
+            <tbody><% (locals.qcs || []).forEach(q => { %><tr>
+                <td><%= new Date(q.inspection_date).toLocaleDateString() %></td>
+                <td>#<%= q.cycle_id %> - <%= q.breed_name %></td>
+                <td><span class="badge badge-primary"><%= q.inspection_type %></span></td>
+                <td><%= q.FName %> <%= q.LName %></td>
+                <td><span class="badge badge-<%= q.compliance_status === 'passed' ? 'success' : q.compliance_status === 'failed' ? 'danger' : 'warning' %>"><%= q.compliance_status %></span></td>
+                <td><%= q.test_results || '—' %></td>
+            </tr><% }) %></tbody></table>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer') %>

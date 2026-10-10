@@ -1,0 +1,208 @@
+<%- include('partials/header') %>
+
+<div class="page-title">
+    <h1><i class="fa-solid fa-truck-field"></i> Supplier Management</h1>
+    <div class="quick-actions">
+        <button class="btn btn-primary" onclick="document.getElementById('addSupplierSection').scrollIntoView({behavior:'smooth'})">
+            <i class="fa-solid fa-plus"></i> Add Supplier
+        </button>
+        <a href="/purchase-orders" class="btn btn-accent"><i class="fa-solid fa-file-invoice-dollar"></i> Purchase Orders</a>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="/suppliers" class="form-inline-grid">
+            <select name="type" onchange="this.form.submit()">
+                <option value="">All Types</option>
+                <option value="Feed" <%= filters.type === 'Feed' ? 'selected' : '' %>>Feed</option>
+                <option value="Medicine" <%= filters.type === 'Medicine' ? 'selected' : '' %>>Medicine</option>
+                <option value="Vaccine" <%= filters.type === 'Vaccine' ? 'selected' : '' %>>Vaccine</option>
+                <option value="Equipment" <%= filters.type === 'Equipment' ? 'selected' : '' %>>Equipment</option>
+            </select>
+            <select name="status" onchange="this.form.submit()">
+                <option value="">All Status</option>
+                <option value="active" <%= filters.status === 'active' ? 'selected' : '' %>>Active</option>
+                <option value="inactive" <%= filters.status === 'inactive' ? 'selected' : '' %>>Inactive</option>
+                <option value="blocked" <%= filters.status === 'blocked' ? 'selected' : '' %>>Blocked</option>
+            </select>
+            <% if (filters.type || filters.status) { %>
+                <a href="/suppliers" class="btn btn-secondary"><i class="fa-solid fa-times"></i> Clear</a>
+            <% } %>
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-filter"></i> Filter</button>
+        </form>
+    </div>
+</div>
+
+<!-- Supplier List -->
+<div class="card">
+    <div class="card-header"><h2><i class="fa-solid fa-list"></i> Suppliers (<%= suppliers.length %>)</h2></div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Company</th>
+                        <th>Contact</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                        <th>City</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Products</th>
+                        <th>PO History</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% suppliers.forEach(s => { %>
+                    <tr>
+                        <td>#<%= s.supplier_id %></td>
+                        <td><strong><%= s.company_name %></strong></td>
+                        <td><%= s.contact_person || '—' %></td>
+                        <td><%= s.phone %></td>
+                        <td><%= s.email || '—' %></td>
+                        <td><%= s.city || '—' %></td>
+                                                <td>
+                            <% s.supplier_type.split(',').forEach(type => { %>
+                                <span class="badge badge-<%= type === 'Feed' ? 'warning' : type === 'Medicine' ? 'danger' : type === 'Vaccine' ? 'primary' : 'secondary' %>"><%= type %></span>
+                            <% }) %>
+                        </td>
+                        <td><span class="badge badge-<%= s.status === 'active' ? 'success' : s.status === 'blocked' ? 'danger' : 'secondary' %>"><%= s.status %></span></td>
+                        <td>
+                            <% const prods = productsMap[s.supplier_id] || []; %>
+                            <% if (prods.length > 0) { %>
+                                <% prods.slice(0, 3).forEach(p => { %>
+                                    <span class="badge badge-secondary" style="margin:1px"><%= p.name %></span>
+                                <% }) %>
+                                <% if (prods.length > 3) { %><small class="text-muted">+<%= prods.length - 3 %> more</small><% } %>
+                            <% } else { %>
+                                <span class="text-muted">—</span>
+                            <% } %>
+                        </td>
+                        <td>
+                            <% const po = poMap[s.supplier_id]; %>
+                            <% if (po) { %>
+                                <small><%= po.total_pos %> orders<br><span class="text-success"><%= parseFloat(po.total_purchased || 0).toLocaleString() %> EGP</span></small>
+                            <% } else { %>
+                                <span class="text-muted">None</span>
+                            <% } %>
+                        </td>
+                        <td style="white-space:nowrap">
+                            <button class="btn btn-sm btn-secondary" onclick="editSupplier(this)"
+                                data-id="<%= s.supplier_id %>"
+                                data-company="<%= s.company_name %>"
+                                data-contact="<%= s.contact_person || '' %>"
+                                data-phone="<%= s.phone %>"
+                                data-email="<%= s.email || '' %>"
+                                data-city="<%= s.city || '' %>"
+                                data-type="<%= s.supplier_type %>"
+                                data-status="<%= s.status %>"
+                                title="Edit">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <form action="/suppliers/delete" method="POST" style="display:inline" onsubmit="return confirm('Delete this supplier?')">
+                                <input type="hidden" name="supplier_id" value="<%= s.supplier_id %>">
+                                <button class="btn btn-sm btn-danger" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                            </form>
+                            <a href="/purchase-orders?supplier_id=<%= s.supplier_id %>" class="btn btn-sm btn-secondary" title="View POs"><i class="fa-solid fa-file-invoice-dollar"></i></a>
+                        </td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add Supplier Form -->
+<div class="card" id="addSupplierSection">
+    <div class="card-header"><h2><i class="fa-solid fa-plus"></i> Add Supplier</h2></div>
+    <div class="card-body">
+        <form action="/suppliers" method="POST">
+            <div class="form-row">
+                <div class="form-group"><label>Company Name *</label><input name="company_name" placeholder="Company name" required></div>
+                <div class="form-group"><label>Contact Person</label><input name="contact_person" placeholder="Contact person"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Phone *</label><input name="phone" placeholder="Phone number" required></div>
+                <div class="form-group"><label>Email</label><input name="email" type="email" placeholder="Email"></div>
+                <div class="form-group"><label>City</label><input name="city" placeholder="City"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Supplier Type (Select multiple with Ctrl) *</label>
+                    <select name="supplier_type" required multiple style="height: 100px;">
+                        <option value="Feed">Feed</option>
+                        <option value="Medicine">Medicine</option>
+                        <option value="Vaccine">Vaccine</option>
+                        <option value="Equipment">Equipment</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-save"></i> Create Supplier</button>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Supplier Modal -->
+<div id="editSupplierOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;align-items:center;justify-content:center">
+    <div class="card" style="max-width:550px;width:90%;margin:auto">
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+            <h2><i class="fa-solid fa-pen"></i> Edit Supplier</h2>
+            <button class="btn btn-sm btn-secondary" onclick="closeEditSupplier()"><i class="fa-solid fa-times"></i></button>
+        </div>
+        <div class="card-body">
+            <form action="/suppliers/edit" method="POST">
+                <input type="hidden" name="supplier_id" id="es_id">
+                <div class="form-row">
+                    <div class="form-group"><label>Company *</label><input name="company_name" id="es_company" required></div>
+                    <div class="form-group"><label>Contact</label><input name="contact_person" id="es_contact"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Phone *</label><input name="phone" id="es_phone" required></div>
+                    <div class="form-group"><label>Email</label><input name="email" id="es_email"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>City</label><input name="city" id="es_city"></div>
+                    <div class="form-group">
+                        <label>Type (Multi-select)</label>
+                        <select name="supplier_type" id="es_type" multiple style="height: 80px;">
+                            <option value="Feed">Feed</option>
+                            <option value="Medicine">Medicine</option>
+                            <option value="Vaccine">Vaccine</option>
+                            <option value="Equipment">Equipment</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Status</label><select name="status" id="es_status"><option value="active">active</option><option value="inactive">inactive</option><option value="blocked">blocked</option></select></div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-save"></i> Save</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editSupplier(btn) {
+    console.log('Editing supplier:', btn.dataset.id);
+    document.getElementById('es_id').value = btn.dataset.id || btn.getAttribute('data-id');
+    document.getElementById('es_company').value = btn.dataset.company || btn.getAttribute('data-company');
+    document.getElementById('es_contact').value = btn.dataset.contact || btn.getAttribute('data-contact');
+    document.getElementById('es_phone').value = btn.dataset.phone || btn.getAttribute('data-phone');
+    document.getElementById('es_email').value = btn.dataset.email || btn.getAttribute('data-email');
+    document.getElementById('es_city').value = btn.dataset.city || btn.getAttribute('data-city');
+    const types = (btn.dataset.type || btn.getAttribute('data-type') || 'other').split(',');
+    const typeSelect = document.getElementById('es_type');
+    for (let i = 0; i < typeSelect.options.length; i++) {
+        typeSelect.options[i].selected = types.includes(typeSelect.options[i].value);
+    }
+    document.getElementById('es_status').value = btn.dataset.status || btn.getAttribute('data-status') || 'active';
+    document.getElementById('editSupplierOverlay').style.display = 'flex';
+}
+function closeEditSupplier() { document.getElementById('editSupplierOverlay').style.display = 'none'; }
+document.getElementById('editSupplierOverlay').addEventListener('click', function(e) { if (e.target === this) closeEditSupplier(); });
+</script>
+
+<%- include('partials/footer') %>

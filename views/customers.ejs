@@ -1,0 +1,227 @@
+<%- include('partials/header') %>
+
+<div class="page-title">
+    <h1><i class="fa-solid fa-users"></i> B2B Customer Management</h1>
+    <div class="quick-actions">
+        <button class="btn btn-primary" onclick="document.getElementById('addCustomerSection').scrollIntoView({behavior:'smooth'})">
+            <i class="fa-solid fa-plus"></i> Add Corporate Customer
+        </button>
+    </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="stats-grid">
+    <div class="stat-card stat-primary">
+        <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+        <div class="stat-info"><h3>Total Customers</h3><div class="value"><%= stats.totalCustomers %></div></div>
+    </div>
+    <div class="stat-card stat-success">
+        <div class="stat-icon"><i class="fa-solid fa-user-check"></i></div>
+        <div class="stat-info"><h3>Active</h3><div class="value"><%= stats.activeCustomers %></div></div>
+    </div>
+    <div class="stat-card stat-warning">
+        <div class="stat-icon"><i class="fa-solid fa-sack-dollar"></i></div>
+        <div class="stat-info"><h3>Total Revenue</h3><div class="value"><%= (stats.totalSpent || 0).toLocaleString('en', {minimumFractionDigits:2}) %> EGP</div></div>
+    </div>
+    <div class="stat-card stat-danger">
+        <div class="stat-icon"><i class="fa-solid fa-dove"></i></div>
+        <div class="stat-info"><h3>Birds Sold</h3><div class="value"><%= (stats.totalBirdsBought || 0).toLocaleString() %></div></div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="/customers" class="form-inline-grid">
+            <div class="form-group mb-0">
+                <input type="text" name="search" placeholder="Search company or trade name..." value="<%= filters.search || '' %>" oninput="if(this.value.length > 2 || this.value.length === 0) this.form.submit()" style="padding: 0.5rem;">
+            </div>
+            <select name="type" onchange="this.form.submit()">
+                <option value="">All Types</option>
+                <option value="Wholesaler" <%= filters.type === 'Wholesaler' ? 'selected' : '' %>>Wholesaler</option>
+                <option value="Market" <%= filters.type === 'Market' ? 'selected' : '' %>>Market</option>
+                <option value="Restaurant" <%= filters.type === 'Restaurant' ? 'selected' : '' %>>Restaurant</option>
+                <option value="Distributor" <%= filters.type === 'Distributor' ? 'selected' : '' %>>Distributor</option>
+                <option value="Other" <%= filters.type === 'Other' ? 'selected' : '' %>>Other</option>
+            </select>
+            <select name="status" onchange="this.form.submit()">
+                <option value="">All Status</option>
+                <option value="Active" <%= filters.status === 'Active' ? 'selected' : '' %>>Active</option>
+                <option value="Inactive" <%= filters.status === 'Inactive' ? 'selected' : '' %>>Inactive</option>
+                <option value="Suspended" <%= filters.status === 'Suspended' ? 'selected' : '' %>>Suspended</option>
+            </select>
+            <% if (filters.search || filters.type || filters.status) { %>
+                <a href="/customers" class="btn btn-secondary"><i class="fa-solid fa-times"></i> Clear</a>
+            <% } %>
+        </form>
+    </div>
+</div>
+
+<!-- Customer List -->
+<div class="card">
+    <div class="card-header"><h2><i class="fa-solid fa-list"></i> Corporate Partners (<%= customers.length %>)</h2></div>
+    <div class="card-body">
+        <% if (customers.length === 0) { %>
+            <div class="empty-state">
+                <i class="fa-solid fa-users fa-3x"></i>
+                <h2>No Customers Found</h2>
+                <p>Register a new B2B partner to start trading.</p>
+            </div>
+        <% } else { %>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Company Name</th>
+                        <th>Trade Name</th>
+                        <th>Type</th>
+                        <th>City</th>
+                        <th>Phone</th>
+                        <th>Credit Limit</th>
+                        <th>Terms</th>
+                        <th>Status</th>
+                        <th>Orders</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% customers.forEach(c => { %>
+                    <tr>
+                        <td>#<%= c.customer_id %></td>
+                        <td><strong><%= c.company_name %></strong></td>
+                        <td><%= c.trade_name || '—' %></td>
+                        <td><span class="badge badge-primary"><%= c.customer_type %></span></td>
+                        <td><%= c.city %></td>
+                        <td><%= c.phone %></td>
+                        <td><%= parseFloat(c.credit_limit || 0).toLocaleString() %> EGP</td>
+                        <td><%= c.payment_terms %></td>
+                        <td><span class="badge badge-<%= c.status === 'Active' ? 'success' : (c.status === 'Suspended' ? 'danger' : 'secondary') %>"><%= c.status %></span></td>
+                        <td>
+                            <span class="badge badge-warning"><%= c.active_orders_count || 0 %> Active</span>
+                        </td>
+                        <td style="white-space:nowrap">
+                            <button class="btn btn-sm btn-secondary" onclick="editCustomer(this)" 
+                                data-id="<%= c.customer_id %>"
+                                data-company="<%= c.company_name %>"
+                                data-trade="<%= c.trade_name || '' %>"
+                                data-phone="<%= c.phone %>"
+                                data-email="<%= c.email %>"
+                                data-city="<%= c.city %>"
+                                data-address="<%= c.address %>"
+                                data-type="<%= c.customer_type %>"
+                                data-credit="<%= c.credit_limit %>"
+                                data-terms="<%= c.payment_terms %>"
+                                data-status="<%= c.status %>"
+                                title="Edit">
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <form action="/customers/delete" method="POST" style="display:inline" onsubmit="return confirm('Delete this customer?')">
+                                <input type="hidden" name="customer_id" value="<%= c.customer_id %>">
+                                <button class="btn btn-sm btn-danger" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                            </form>
+                            <a href="/sales-orders?customer_id=<%= c.customer_id %>" class="btn btn-sm btn-secondary" title="View Orders"><i class="fa-solid fa-file-invoice"></i></a>
+                        </td>
+                    </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+        <% } %>
+    </div>
+</div>
+
+<!-- Add Customer Form -->
+<div class="card" id="addCustomerSection">
+    <div class="card-header"><h2><i class="fa-solid fa-user-plus"></i> Add New B2B Partner</h2></div>
+    <div class="card-body">
+        <form action="/customers" method="POST">
+            <div class="form-row">
+                <div class="form-group"><label>Official Company Name *</label><input name="company_name" required></div>
+                <div class="form-group"><label>Trade Name / Brand</label><input name="trade_name"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Business Type</label>
+                    <select name="customer_type">
+                        <option value="Wholesaler">Wholesaler</option>
+                        <option value="Market">Market</option>
+                        <option value="Restaurant">Restaurant</option>
+                        <option value="Distributor">Distributor</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group"><label>Phone *</label><input name="phone" required></div>
+                <div class="form-group"><label>Email *</label><input name="email" type="email" required></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>City</label><input name="city"></div>
+                <div class="form-group"><label>Address</label><input name="address"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Credit Limit (EGP)</label><input name="credit_limit" type="number" step="0.01" value="0"></div>
+                <div class="form-group"><label>Payment Terms</label><input name="payment_terms" placeholder="e.g. Net-30" value="Net-30"></div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-save"></i> Register Partner</button>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Customer Modal -->
+<div id="editCustomerOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2000;align-items:center;justify-content:center">
+    <div class="card" style="max-width:600px;width:90%;max-height:90vh;overflow-y:auto;margin:auto">
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+            <h2><i class="fa-solid fa-pen"></i> Edit Partner</h2>
+            <button class="btn btn-sm btn-secondary" onclick="closeEditCustomer()"><i class="fa-solid fa-times"></i></button>
+        </div>
+        <div class="card-body">
+            <form action="/customers/edit" method="POST">
+                <input type="hidden" name="customer_id" id="edit_customer_id">
+                <div class="form-row">
+                    <div class="form-group"><label>Company Name</label><input name="company_name" id="edit_company_name" required></div>
+                    <div class="form-group"><label>Trade Name</label><input name="trade_name" id="edit_trade_name"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Phone</label><input name="phone" id="edit_phone"></div>
+                    <div class="form-group"><label>Email</label><input name="email" id="edit_email" type="email"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>City</label><input name="city" id="edit_city"></div>
+                    <div class="form-group"><label>Address</label><input name="address" id="edit_address"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="status" id="edit_status">
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                            <option value="Suspended">Suspended</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Credit Limit</label><input name="credit_limit" id="edit_credit_limit" type="number" step="0.01"></div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Save Changes</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editCustomer(btn) {
+    document.getElementById('edit_customer_id').value = btn.getAttribute('data-id');
+    document.getElementById('edit_company_name').value = btn.getAttribute('data-company');
+    document.getElementById('edit_trade_name').value = btn.getAttribute('data-trade');
+    document.getElementById('edit_phone').value = btn.getAttribute('data-phone');
+    document.getElementById('edit_email').value = btn.getAttribute('data-email');
+    document.getElementById('edit_city').value = btn.getAttribute('data-city');
+    document.getElementById('edit_address').value = btn.getAttribute('data-address');
+    document.getElementById('edit_credit_limit').value = btn.getAttribute('data-credit');
+    document.getElementById('edit_status').value = btn.getAttribute('data-status');
+    document.getElementById('editCustomerOverlay').style.display = 'flex';
+}
+function closeEditCustomer() {
+    document.getElementById('editCustomerOverlay').style.display = 'none';
+}
+</script>
+
+<%- include('partials/footer') %>

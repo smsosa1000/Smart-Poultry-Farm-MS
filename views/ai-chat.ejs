@@ -1,0 +1,126 @@
+<%- include('partials/header') %>
+<div class="page-title">
+    <h1><i class="fa-solid fa-robot"></i> Smart Farm Assistant</h1>
+    <p class="text-muted">Ask anything — Template engine handles known queries instantly, Gemini AI handles the rest 🚀</p>
+</div>
+
+<div class="ai-container">
+    <div class="ai-chat-panel">
+        <!-- Query Input -->
+        <div class="card ai-input-card">
+            <div class="card-body">
+                <form action="/ai-assistant" method="POST" class="ai-form">
+                    <div class="ai-input-wrapper">
+                        <input type="text" name="query" id="ai-query" value="<%= query %>"
+                               placeholder="Ask me anything... e.g. 'How many birds died?' or 'كم عدد الدواجن التي ماتت؟'"
+                               autocomplete="off" required>
+                        <button type="submit" class="btn btn-primary btn-ai-send">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Results -->
+        <% if (result) { %>
+            <% if (result.success) { %>
+                <div class="card ai-result-card <%= result.source === 'gemini' ? 'ai-gemini-card' : '' %>">
+                    <div class="card-header ai-result-header">
+                        <div>
+                            <h3><i class="fa-solid fa-check-circle text-success"></i> <%= result.description %></h3>
+                            <small class="text-muted"><%= result.description_ar %> &bull; <%= result.row_count %> rows</small>
+                        </div>
+                        <div style="display:flex;gap:0.5rem;align-items:center">
+                            <% if (result.source === 'gemini') { %>
+                                <span class="badge badge-gemini"><i class="fa-solid fa-wand-magic-sparkles"></i> Gemini AI</span>
+                            <% } else { %>
+                                <span class="badge badge-success"><i class="fa-solid fa-bolt"></i> Instant</span>
+                            <% } %>
+                            <span class="badge badge-secondary"><%= result.query_id %></span>
+                        </div>
+                    </div>
+                    <% if (result.generated_sql) { %>
+                        <div class="ai-sql-reveal">
+                            <details>
+                                <summary><i class="fa-solid fa-code"></i> View Generated SQL</summary>
+                                <pre class="ai-sql-block"><%= result.generated_sql %></pre>
+                            </details>
+                        </div>
+                    <% } %>
+                    <div class="card-body">
+                        <% if (result.data.length > 0) { %>
+                            <div class="table-responsive">
+                                <table class="data-table ai-table">
+                                    <thead>
+                                        <tr><% result.columns.forEach(col => { %><th><%= col.replace(/_/g, ' ') %></th><% }) %></tr>
+                                    </thead>
+                                    <tbody>
+                                        <% result.data.forEach(row => { %>
+                                        <tr>
+                                            <% result.columns.forEach(col => { %>
+                                            <td>
+                                                <% const val = row[col]; %>
+                                                <% if (val === null || val === undefined) { %>—
+                                                <% } else if (typeof val === 'object' && val instanceof Date) { %><%= val.toLocaleDateString() %>
+                                                <% } else if (typeof val === 'number' && col.includes('cost') || col.includes('revenue') || col.includes('price') || col.includes('salary')) { %><%= parseFloat(val).toLocaleString() %> EGP
+                                                <% } else if (typeof val === 'string' && val.startsWith('🔴')) { %><span class="text-danger"><%= val %></span>
+                                                <% } else if (typeof val === 'string' && val.startsWith('🟠')) { %><span class="text-warning"><%= val %></span>
+                                                <% } else if (typeof val === 'string' && val.startsWith('🟡')) { %><span class="text-warning"><%= val %></span>
+                                                <% } else if (typeof val === 'string' && val.startsWith('🟢')) { %><span class="text-success"><%= val %></span>
+                                                <% } else { %><%= val %>
+                                                <% } %>
+                                            </td>
+                                            <% }) %>
+                                        </tr>
+                                        <% }) %>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <% } else { %>
+                            <p class="text-muted">No data found for this query.</p>
+                        <% } %>
+                    </div>
+                </div>
+            <% } else { %>
+                <div class="card ai-error-card">
+                    <div class="card-body">
+                        <div class="ai-error-message">
+                            <i class="fa-solid fa-circle-exclamation"></i>
+                            <p><%= result.error %></p>
+                            <p class="text-muted"><%= result.error_ar || '' %></p>
+                        </div>
+                    </div>
+                </div>
+            <% } %>
+        <% } %>
+
+        <!-- Suggestions -->
+        <div class="card">
+            <div class="card-header"><h3><i class="fa-solid fa-lightbulb"></i> Try These Questions</h3></div>
+            <div class="card-body">
+                <div class="ai-suggestions">
+                    <div class="suggestions-col">
+                        <h4>🇬🇧 English</h4>
+                        <% suggestions.en.forEach(s => { %>
+                            <form action="/ai-assistant" method="POST" style="display:inline">
+                                <input type="hidden" name="query" value="<%= s %>">
+                                <button type="submit" class="suggestion-chip"><%= s %></button>
+                            </form>
+                        <% }) %>
+                    </div>
+                    <div class="suggestions-col">
+                        <h4>🇪🇬 العربية</h4>
+                        <% suggestions.ar.forEach(s => { %>
+                            <form action="/ai-assistant" method="POST" style="display:inline">
+                                <input type="hidden" name="query" value="<%= s %>">
+                                <button type="submit" class="suggestion-chip" dir="rtl"><%= s %></button>
+                            </form>
+                        <% }) %>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<%- include('partials/footer') %>
